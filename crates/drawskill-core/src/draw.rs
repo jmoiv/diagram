@@ -31,12 +31,20 @@ pub struct ShapeStyle {
 
 impl ShapeStyle {
     pub fn new(fill: Color, stroke: Color, stroke_width: f64) -> Self {
-        ShapeStyle { fill, stroke, stroke_width }
+        ShapeStyle {
+            fill,
+            stroke,
+            stroke_width,
+        }
     }
 
     /// An outline-only shape (no fill).
     pub fn outline(stroke: Color, stroke_width: f64) -> Self {
-        ShapeStyle { fill: Color::NONE, stroke, stroke_width }
+        ShapeStyle {
+            fill: Color::NONE,
+            stroke,
+            stroke_width,
+        }
     }
 }
 
@@ -65,13 +73,35 @@ pub enum PathCmd {
 /// text baseline.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Primitive {
-    Line { a: Point, b: Point, stroke: Stroke },
-    Polyline { points: Vec<Point>, stroke: Stroke },
-    Rect { rect: Rect, rx: f64, style: ShapeStyle },
-    Circle { center: Point, radius: f64, style: ShapeStyle },
-    Path { cmds: Vec<PathCmd>, style: ShapeStyle },
+    Line {
+        a: Point,
+        b: Point,
+        stroke: Stroke,
+    },
+    Polyline {
+        points: Vec<Point>,
+        stroke: Stroke,
+    },
+    Rect {
+        rect: Rect,
+        rx: f64,
+        style: ShapeStyle,
+    },
+    Circle {
+        center: Point,
+        radius: f64,
+        style: ShapeStyle,
+    },
+    Path {
+        cmds: Vec<PathCmd>,
+        style: ShapeStyle,
+    },
     /// `pos.y` is the baseline. Width/measurement is handled by the layout engine.
-    Text { pos: Point, text: String, style: TextStyle },
+    Text {
+        pos: Point,
+        text: String,
+        style: TextStyle,
+    },
 }
 
 impl Primitive {
@@ -80,9 +110,11 @@ impl Primitive {
     pub fn translated(&self, dx: f64, dy: f64) -> Primitive {
         let p = |pt: &Point| pt.translate(dx, dy);
         match self {
-            Primitive::Line { a, b, stroke } => {
-                Primitive::Line { a: p(a), b: p(b), stroke: stroke.clone() }
-            }
+            Primitive::Line { a, b, stroke } => Primitive::Line {
+                a: p(a),
+                b: p(b),
+                stroke: stroke.clone(),
+            },
             Primitive::Polyline { points, stroke } => Primitive::Polyline {
                 points: points.iter().map(p).collect(),
                 stroke: stroke.clone(),
@@ -92,7 +124,11 @@ impl Primitive {
                 rx: *rx,
                 style: style.clone(),
             },
-            Primitive::Circle { center, radius, style } => Primitive::Circle {
+            Primitive::Circle {
+                center,
+                radius,
+                style,
+            } => Primitive::Circle {
                 center: p(center),
                 radius: *radius,
                 style: style.clone(),
@@ -131,7 +167,9 @@ pub struct Painter {
 
 impl Painter {
     pub fn new() -> Self {
-        Painter { primitives: Vec::new() }
+        Painter {
+            primitives: Vec::new(),
+        }
     }
 
     pub fn line(&mut self, a: Point, b: Point, stroke: Stroke) {
@@ -147,7 +185,11 @@ impl Painter {
     }
 
     pub fn circle(&mut self, center: Point, radius: f64, style: ShapeStyle) {
-        self.primitives.push(Primitive::Circle { center, radius, style });
+        self.primitives.push(Primitive::Circle {
+            center,
+            radius,
+            style,
+        });
     }
 
     pub fn path(&mut self, cmds: Vec<PathCmd>, style: ShapeStyle) {
@@ -155,7 +197,11 @@ impl Painter {
     }
 
     pub fn text(&mut self, pos: Point, text: impl Into<String>, style: TextStyle) {
-        self.primitives.push(Primitive::Text { pos, text: text.into(), style });
+        self.primitives.push(Primitive::Text {
+            pos,
+            text: text.into(),
+            style,
+        });
     }
 
     /// Number of primitives emitted so far.
@@ -186,8 +232,16 @@ mod tests {
     fn painter_collects_primitives() {
         let mut p = Painter::new();
         assert!(p.is_empty());
-        p.line(Point::ZERO, Point::new(10.0, 0.0), Stroke::new(Color::BLACK, 1.0));
-        p.circle(Point::new(5.0, 5.0), 3.0, ShapeStyle::outline(Color::BLACK, 1.0));
+        p.line(
+            Point::ZERO,
+            Point::new(10.0, 0.0),
+            Stroke::new(Color::BLACK, 1.0),
+        );
+        p.circle(
+            Point::new(5.0, 5.0),
+            3.0,
+            ShapeStyle::outline(Color::BLACK, 1.0),
+        );
         assert_eq!(p.len(), 2);
         assert!(!p.is_empty());
         assert_eq!(p.into_primitives().len(), 2);

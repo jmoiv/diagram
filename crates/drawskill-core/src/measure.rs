@@ -73,7 +73,11 @@ pub trait TextMeasurer {
         font_size: f64,
     ) -> ParagraphMetrics {
         let p = self.layout_paragraph(text, max_width, font_family, font_size);
-        ParagraphMetrics { width: p.width, height: p.height, lines: p.lines.len().max(1) }
+        ParagraphMetrics {
+            width: p.width,
+            height: p.height,
+            lines: p.lines.len().max(1),
+        }
     }
 }
 
@@ -139,7 +143,10 @@ impl TextMeasurer for BasicMeasurer {
                     cur.push_str(word);
                     cur_w = w;
                 } else if cur_w + space_w + w > max_width {
-                    lines.push(WrappedLine { text: std::mem::take(&mut cur), width: cur_w });
+                    lines.push(WrappedLine {
+                        text: std::mem::take(&mut cur),
+                        width: cur_w,
+                    });
                     cur.push_str(word);
                     cur_w = w;
                 } else {
@@ -148,12 +155,22 @@ impl TextMeasurer for BasicMeasurer {
                     cur_w += space_w + w;
                 }
             }
-            lines.push(WrappedLine { text: cur, width: cur_w });
+            lines.push(WrappedLine {
+                text: cur,
+                width: cur_w,
+            });
         }
         if lines.is_empty() {
-            lines.push(WrappedLine { text: String::new(), width: 0.0 });
+            lines.push(WrappedLine {
+                text: String::new(),
+                width: 0.0,
+            });
         }
-        let width = lines.iter().map(|l| l.width).fold(0.0, f64::max).min(max_width);
+        let width = lines
+            .iter()
+            .map(|l| l.width)
+            .fold(0.0, f64::max)
+            .min(max_width);
         ParagraphLayout {
             height: line_height * lines.len() as f64,
             width,
@@ -180,10 +197,19 @@ mod tests {
     fn paragraph_wraps_and_preserves_words() {
         let m = BasicMeasurer::default();
         let p = m.layout_paragraph("hello world hello world", 70.0, "sans", 10.0);
-        assert!(p.lines.len() >= 2, "expected wrapping, got {} lines", p.lines.len());
+        assert!(
+            p.lines.len() >= 2,
+            "expected wrapping, got {} lines",
+            p.lines.len()
+        );
         assert!(p.width <= 70.0);
         // Every word survives wrapping.
-        let joined = p.lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(" ");
+        let joined = p
+            .lines
+            .iter()
+            .map(|l| l.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
         assert_eq!(joined.split_whitespace().count(), 4);
     }
 

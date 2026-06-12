@@ -10,7 +10,7 @@ use drawskill_core::geom::{Point, Rect, Size};
 use drawskill_core::measure::TextMeasurer;
 use drawskill_core::style::{Style, TextAnchor};
 use drawskill_core::symbols::{
-    Dir, PropKind, PropValue, PropertySpec, Port, Props, Symbol, SymbolPlugin,
+    Dir, Port, PropKind, PropValue, PropertySpec, Props, Symbol, SymbolPlugin,
 };
 
 /// The data-flow diagram symbol plugin.
@@ -88,8 +88,18 @@ fn number_of(props: &Props) -> Option<String> {
 
 fn label_props() -> Vec<PropertySpec> {
     vec![
-        PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Text shown inside the symbol."),
-        PropertySpec::optional("number", PropKind::Text, PropValue::text(""), "Optional identifier shown in a corner."),
+        PropertySpec::optional(
+            "label",
+            PropKind::Text,
+            PropValue::text(""),
+            "Text shown inside the symbol.",
+        ),
+        PropertySpec::optional(
+            "number",
+            PropKind::Text,
+            PropValue::text(""),
+            "Optional identifier shown in a corner.",
+        ),
     ]
 }
 
@@ -138,7 +148,14 @@ impl Symbol for Process {
     fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
         compass_ports(bounds)
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let c = bounds.center();
         let r = bounds.width.min(bounds.height) / 2.0;
         p.circle(c, r, outline(style));
@@ -172,7 +189,14 @@ impl Symbol for Entity {
     fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
         compass_ports(bounds)
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         p.rect(bounds, 0.0, outline(style));
         centered_text(p, bounds.center(), label_of(props), 12.0, style);
     }
@@ -201,19 +225,48 @@ impl Symbol for Store {
     fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
         compass_ports(bounds)
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let top = bounds.y;
         let bottom = bounds.bottom();
         // Two horizontal lines and a closed left edge (right side stays open).
-        p.line(Point::new(bounds.x, top), Point::new(bounds.right(), top), stroke(style));
-        p.line(Point::new(bounds.x, bottom), Point::new(bounds.right(), bottom), stroke(style));
-        p.line(Point::new(bounds.x, top), Point::new(bounds.x, bottom), stroke(style));
+        p.line(
+            Point::new(bounds.x, top),
+            Point::new(bounds.right(), top),
+            stroke(style),
+        );
+        p.line(
+            Point::new(bounds.x, bottom),
+            Point::new(bounds.right(), bottom),
+            stroke(style),
+        );
+        p.line(
+            Point::new(bounds.x, top),
+            Point::new(bounds.x, bottom),
+            stroke(style),
+        );
 
         let mut text_x = bounds.x + 8.0;
         if let Some(n) = number_of(props) {
             let cell_x = bounds.x + 26.0;
-            p.line(Point::new(cell_x, top), Point::new(cell_x, bottom), stroke(style));
-            centered_text(p, Point::new((bounds.x + cell_x) / 2.0, bounds.center().y + 4.0), &n, 11.0, style);
+            p.line(
+                Point::new(cell_x, top),
+                Point::new(cell_x, bottom),
+                stroke(style),
+            );
+            centered_text(
+                p,
+                Point::new((bounds.x + cell_x) / 2.0, bounds.center().y + 4.0),
+                &n,
+                11.0,
+                style,
+            );
             text_x = cell_x + 8.0;
         }
         // Label, left-aligned after the optional number cell.
@@ -244,7 +297,12 @@ impl Symbol for Flow {
         "A standalone labeled data-flow arrow from port `a` (left) to `b` (right)."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
-        vec![PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Flow label, drawn above the arrow.")]
+        vec![PropertySpec::optional(
+            "label",
+            PropKind::Text,
+            PropValue::text(""),
+            "Flow label, drawn above the arrow.",
+        )]
     }
     fn measure(&self, props: &Props, m: &dyn TextMeasurer) -> Size {
         let w = m.measure_line(label_of(props), "sans-serif", 11.0).width;
@@ -258,9 +316,20 @@ impl Symbol for Flow {
             Port::new("b", Point::new(bounds.right(), cy), Dir::Right),
         ]
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let cy = bounds.bottom() - 4.0;
-        p.line(Point::new(bounds.x, cy), Point::new(bounds.right() - 6.0, cy), stroke(style));
+        p.line(
+            Point::new(bounds.x, cy),
+            Point::new(bounds.right() - 6.0, cy),
+            stroke(style),
+        );
         // Arrowhead at the right.
         let tip = Point::new(bounds.right(), cy);
         p.path(
@@ -273,7 +342,13 @@ impl Symbol for Flow {
             filled(style),
         );
         if !label_of(props).is_empty() {
-            centered_text(p, Point::new(bounds.center().x, bounds.y + 10.0), label_of(props), 11.0, style);
+            centered_text(
+                p,
+                Point::new(bounds.center().x, bounds.y + 10.0),
+                label_of(props),
+                11.0,
+                style,
+            );
         }
     }
 }
@@ -292,7 +367,12 @@ impl Symbol for Boundary {
         "A trust boundary: a dashed rounded box with a corner `label`. Set width/height to wrap content."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
-        vec![PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Boundary label, drawn at the top-left.")]
+        vec![PropertySpec::optional(
+            "label",
+            PropKind::Text,
+            PropValue::text(""),
+            "Boundary label, drawn at the top-left.",
+        )]
     }
     fn measure(&self, _props: &Props, _m: &dyn TextMeasurer) -> Size {
         // A sensible default; usually overridden with explicit width/height.
@@ -301,7 +381,14 @@ impl Symbol for Boundary {
     fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
         compass_ports(bounds)
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let tl = Point::new(bounds.x, bounds.y);
         let tr = Point::new(bounds.right(), bounds.y);
         let br = Point::new(bounds.right(), bounds.bottom());
@@ -365,7 +452,10 @@ mod tests {
 
         let mut p = Painter::new();
         proc.draw(&mut p, bounds, &props, &Style::default(), &m);
-        assert!(p.primitives().iter().any(|x| matches!(x, Primitive::Circle { .. })));
+        assert!(p
+            .primitives()
+            .iter()
+            .any(|x| matches!(x, Primitive::Circle { .. })));
         assert!(p
             .primitives()
             .iter()
@@ -376,16 +466,22 @@ mod tests {
     fn process_grows_with_label() {
         let proc = Process;
         let m = BasicMeasurer::default();
-        let small = proc.measure(&{
-            let mut p = Props::new();
-            p.insert("label", PropValue::text("x"));
-            p
-        }, &m);
-        let big = proc.measure(&{
-            let mut p = Props::new();
-            p.insert("label", PropValue::text("a very long process name"));
-            p
-        }, &m);
+        let small = proc.measure(
+            &{
+                let mut p = Props::new();
+                p.insert("label", PropValue::text("x"));
+                p
+            },
+            &m,
+        );
+        let big = proc.measure(
+            &{
+                let mut p = Props::new();
+                p.insert("label", PropValue::text("a very long process name"));
+                p
+            },
+            &m,
+        );
         assert!(big.width > small.width);
     }
 
@@ -410,7 +506,13 @@ mod tests {
         assert!(texts.contains(&"D1"));
         assert!(texts.contains(&"Users"));
         // Open-ended: it draws individual lines, not a closed rect.
-        assert!(p.primitives().iter().filter(|x| matches!(x, Primitive::Line { .. })).count() >= 3);
+        assert!(
+            p.primitives()
+                .iter()
+                .filter(|x| matches!(x, Primitive::Line { .. }))
+                .count()
+                >= 3
+        );
     }
 
     #[test]
@@ -418,9 +520,19 @@ mod tests {
         let b = Boundary;
         let bounds = Rect::new(0.0, 0.0, 160.0, 100.0);
         let mut p = Painter::new();
-        b.draw(&mut p, bounds, &Props::new(), &Style::default(), &BasicMeasurer::default());
+        b.draw(
+            &mut p,
+            bounds,
+            &Props::new(),
+            &Style::default(),
+            &BasicMeasurer::default(),
+        );
         // A dashed box produces many short line segments.
-        let lines = p.primitives().iter().filter(|x| matches!(x, Primitive::Line { .. })).count();
+        let lines = p
+            .primitives()
+            .iter()
+            .filter(|x| matches!(x, Primitive::Line { .. }))
+            .count();
         assert!(lines > 8, "expected many dash segments, got {lines}");
     }
 
@@ -432,9 +544,15 @@ mod tests {
         let m = BasicMeasurer::default();
         let bounds = Rect::from_origin_size(Point::ZERO, flow.measure(&props, &m));
         let ports = flow.ports(bounds, &props);
-        assert_eq!(ports.iter().map(|p| p.name.clone()).collect::<Vec<_>>(), vec!["a", "b"]);
+        assert_eq!(
+            ports.iter().map(|p| p.name.clone()).collect::<Vec<_>>(),
+            vec!["a", "b"]
+        );
         let mut p = Painter::new();
         flow.draw(&mut p, bounds, &props, &Style::default(), &m);
-        assert!(p.primitives().iter().any(|x| matches!(x, Primitive::Path { .. })));
+        assert!(p
+            .primitives()
+            .iter()
+            .any(|x| matches!(x, Primitive::Path { .. })));
     }
 }

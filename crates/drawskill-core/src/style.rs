@@ -14,9 +14,24 @@ pub struct Color {
 }
 
 impl Color {
-    pub const BLACK: Color = Color { r: 0, g: 0, b: 0, a: 255 };
-    pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
-    pub const NONE: Color = Color { r: 0, g: 0, b: 0, a: 0 };
+    pub const BLACK: Color = Color {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 255,
+    };
+    pub const WHITE: Color = Color {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255,
+    };
+    pub const NONE: Color = Color {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
 
     pub fn rgb(r: u8, g: u8, b: u8) -> Self {
         Color { r, g, b, a: 255 }
@@ -148,7 +163,10 @@ impl Style {
             stroke_width: patch.stroke_width.unwrap_or(self.stroke_width),
             fill: patch.fill.unwrap_or(self.fill),
             text_color: patch.text_color.unwrap_or(self.text_color),
-            font_family: patch.font_family.clone().unwrap_or_else(|| self.font_family.clone()),
+            font_family: patch
+                .font_family
+                .clone()
+                .unwrap_or_else(|| self.font_family.clone()),
             font_size: patch.font_size.unwrap_or(self.font_size),
             text_anchor: patch.text_anchor.unwrap_or(self.text_anchor),
             opacity: patch.opacity.unwrap_or(self.opacity),
@@ -192,7 +210,11 @@ mod tests {
     #[test]
     fn inherit_overrides_only_set_fields() {
         let base = Style::default();
-        let patch = StylePatch { font_size: Some(20.0), fill: Some(Color::WHITE), ..Default::default() };
+        let patch = StylePatch {
+            font_size: Some(20.0),
+            fill: Some(Color::WHITE),
+            ..Default::default()
+        };
         let s = base.inherit(&patch);
         assert_eq!(s.font_size, 20.0);
         assert_eq!(s.fill, Color::WHITE);

@@ -1,0 +1,32 @@
+# RC low-pass filter — a simple schematic.
+#
+# Demonstrates: a horizontal row of two-terminal components with auto-layout,
+# component value labels (ohms/farads/volts), and a wire connection between ports.
+
+vars:
+  gap: 28          # space between components
+
+canvas:
+  padding: 16
+  background: white
+
+root:
+  hbox:
+    gap: ${gap}
+    align: center   # keep all components on the same centerline
+    children:
+      - symbol: schematic.vsource
+        id: V1
+        props: { volts: 5 }
+      - symbol: schematic.resistor
+        id: R1
+        props: { ohms: "1k" }
+      - symbol: schematic.capacitor
+        id: C1
+        props: { farads: "100n" }
+      - symbol: schematic.ground
+        id: G1
+
+connect:
+  # Tie the resistor output to the capacitor input.
+  - { from: R1.b, to: C1.a, arrow: none }

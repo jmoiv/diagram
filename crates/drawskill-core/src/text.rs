@@ -38,7 +38,9 @@ impl Default for FontContext {
 impl FontContext {
     /// Create a context with the system fonts loaded.
     pub fn new() -> Self {
-        FontContext { font_system: RefCell::new(FontSystem::new()) }
+        FontContext {
+            font_system: RefCell::new(FontSystem::new()),
+        }
     }
 
     /// List the available font families, sorted by name, each with its distinct styles.
@@ -71,7 +73,9 @@ impl FontContext {
     pub fn has_family(&self, name: &str) -> bool {
         let fs = self.font_system.borrow();
         let found = fs.db().faces().any(|face| {
-            face.families.iter().any(|(fam, _)| fam.eq_ignore_ascii_case(name))
+            face.families
+                .iter()
+                .any(|(fam, _)| fam.eq_ignore_ascii_case(name))
         });
         found
     }
@@ -137,7 +141,11 @@ impl TextMeasurer for FontContext {
             }
         }
         let descent = (line_height - ascent).max(0.0);
-        LineMetrics { width: width as f64, ascent: ascent as f64, descent: descent as f64 }
+        LineMetrics {
+            width: width as f64,
+            ascent: ascent as f64,
+            descent: descent as f64,
+        }
     }
 
     fn layout_paragraph(
@@ -160,12 +168,22 @@ impl TextMeasurer for FontContext {
                 }
                 _ => String::new(),
             };
-            lines.push(WrappedLine { text: line_text, width: run.line_w as f64 });
+            lines.push(WrappedLine {
+                text: line_text,
+                width: run.line_w as f64,
+            });
         }
         if lines.is_empty() {
-            lines.push(WrappedLine { text: String::new(), width: 0.0 });
+            lines.push(WrappedLine {
+                text: String::new(),
+                width: 0.0,
+            });
         }
-        let width = lines.iter().map(|l| l.width).fold(0.0, f64::max).min(max_width);
+        let width = lines
+            .iter()
+            .map(|l| l.width)
+            .fold(0.0, f64::max)
+            .min(max_width);
         ParagraphLayout {
             height: line_height * lines.len() as f64,
             width,
@@ -205,7 +223,10 @@ mod tests {
         let ctx = FontContext::new();
         let narrow = ctx.measure_paragraph("the quick brown fox jumps", 40.0, "sans-serif", 14.0);
         let wide = ctx.measure_paragraph("the quick brown fox jumps", 1000.0, "sans-serif", 14.0);
-        assert!(narrow.lines > wide.lines, "narrower width should wrap to more lines");
+        assert!(
+            narrow.lines > wide.lines,
+            "narrower width should wrap to more lines"
+        );
         assert_eq!(wide.lines, 1);
         assert!(narrow.width <= 40.0);
     }
@@ -214,7 +235,12 @@ mod tests {
     fn layout_paragraph_recovers_words() {
         let ctx = FontContext::new();
         let p = ctx.layout_paragraph("the quick brown fox", 60.0, "sans-serif", 14.0);
-        let joined = p.lines.iter().map(|l| l.text.as_str()).collect::<Vec<_>>().join(" ");
+        let joined = p
+            .lines
+            .iter()
+            .map(|l| l.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
         for word in ["the", "quick", "brown", "fox"] {
             assert!(joined.contains(word), "missing {word} in {joined:?}");
         }

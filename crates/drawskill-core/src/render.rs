@@ -23,9 +23,9 @@ pub fn to_svg(scene: &Scene) -> String {
 
     if let Some(bg) = scene.background {
         if !bg.is_transparent() {
-            let _ = write!(
+            let _ = writeln!(
                 s,
-                "  <rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" fill=\"{}\"{}/>\n",
+                "  <rect x=\"0\" y=\"0\" width=\"{}\" height=\"{}\" fill=\"{}\"{}/>",
                 num(scene.size.width),
                 num(scene.size.height),
                 bg.to_hex(),
@@ -45,9 +45,9 @@ pub fn to_svg(scene: &Scene) -> String {
 fn render_primitive(s: &mut String, p: &Primitive) {
     match p {
         Primitive::Line { a, b, stroke } => {
-            let _ = write!(
+            let _ = writeln!(
                 s,
-                "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"{}/>\n",
+                "  <line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"{}/>",
                 num(a.x),
                 num(a.y),
                 num(b.x),
@@ -56,9 +56,9 @@ fn render_primitive(s: &mut String, p: &Primitive) {
             );
         }
         Primitive::Polyline { points, stroke } => {
-            let _ = write!(
+            let _ = writeln!(
                 s,
-                "  <polyline points=\"{}\" fill=\"none\"{}/>\n",
+                "  <polyline points=\"{}\" fill=\"none\"{}/>",
                 points_attr(points),
                 stroke_attrs(stroke),
             );
@@ -69,9 +69,9 @@ fn render_primitive(s: &mut String, p: &Primitive) {
             } else {
                 String::new()
             };
-            let _ = write!(
+            let _ = writeln!(
                 s,
-                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"{}{}/>\n",
+                "  <rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"{}{}/>",
                 num(rect.x),
                 num(rect.y),
                 num(rect.width),
@@ -80,10 +80,14 @@ fn render_primitive(s: &mut String, p: &Primitive) {
                 shape_attrs(style),
             );
         }
-        Primitive::Circle { center, radius, style } => {
-            let _ = write!(
+        Primitive::Circle {
+            center,
+            radius,
+            style,
+        } => {
+            let _ = writeln!(
                 s,
-                "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\"{}/>\n",
+                "  <circle cx=\"{}\" cy=\"{}\" r=\"{}\"{}/>",
                 num(center.x),
                 num(center.y),
                 num(*radius),
@@ -91,12 +95,17 @@ fn render_primitive(s: &mut String, p: &Primitive) {
             );
         }
         Primitive::Path { cmds, style } => {
-            let _ = write!(s, "  <path d=\"{}\"{}/>\n", path_data(cmds), shape_attrs(style));
+            let _ = writeln!(
+                s,
+                "  <path d=\"{}\"{}/>",
+                path_data(cmds),
+                shape_attrs(style)
+            );
         }
         Primitive::Text { pos, text, style } => {
-            let _ = write!(
+            let _ = writeln!(
                 s,
-                "  <text x=\"{}\" y=\"{}\"{}>{}</text>\n",
+                "  <text x=\"{}\" y=\"{}\"{}>{}</text>",
                 num(pos.x),
                 num(pos.y),
                 text_attrs(style),
@@ -251,7 +260,11 @@ mod tests {
     use crate::style::Color;
 
     fn scene(prims: Vec<Primitive>) -> Scene {
-        Scene { size: Size::new(100.0, 50.0), background: None, primitives: prims }
+        Scene {
+            size: Size::new(100.0, 50.0),
+            background: None,
+            primitives: prims,
+        }
     }
 
     #[test]

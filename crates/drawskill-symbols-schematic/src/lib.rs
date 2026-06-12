@@ -10,7 +10,7 @@ use drawskill_core::geom::{Point, Rect, Size};
 use drawskill_core::measure::TextMeasurer;
 use drawskill_core::style::{Style, TextAnchor};
 use drawskill_core::symbols::{
-    Dir, PropKind, PropValue, PropertySpec, Props, Port, Symbol, SymbolPlugin,
+    Dir, Port, PropKind, PropValue, PropertySpec, Props, Symbol, SymbolPlugin,
 };
 
 /// The schematic symbol plugin.
@@ -68,7 +68,9 @@ fn value_label(props: &Props, key: &str, unit: &str) -> Option<String> {
         return Some(explicit.to_string());
     }
     match props.get(key) {
-        Some(PropValue::Number(n)) => Some(format!("{}{}", drawskill_core::expr::format_num(*n), unit)),
+        Some(PropValue::Number(n)) => {
+            Some(format!("{}{}", drawskill_core::expr::format_num(*n), unit))
+        }
         Some(PropValue::Text(s)) if !s.is_empty() => Some(format!("{s}{unit}")),
         _ => None,
     }
@@ -95,8 +97,16 @@ fn tt_ports(bounds: Rect, has_label: bool) -> Vec<Port> {
 
 /// Draw the lead wires from the bounds edges to the body's left/right extents at `cy`.
 fn draw_leads(p: &mut Painter, bounds: Rect, body_l: f64, body_r: f64, cy: f64, style: &Style) {
-    p.line(Point::new(bounds.x, cy), Point::new(body_l, cy), stroke(style));
-    p.line(Point::new(body_r, cy), Point::new(bounds.right(), cy), stroke(style));
+    p.line(
+        Point::new(bounds.x, cy),
+        Point::new(body_l, cy),
+        stroke(style),
+    );
+    p.line(
+        Point::new(body_r, cy),
+        Point::new(bounds.right(), cy),
+        stroke(style),
+    );
 }
 
 /// Draw a centered label across the top of the component (if present).
@@ -133,8 +143,18 @@ impl Symbol for Resistor {
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
         vec![
-            PropertySpec::optional("ohms", PropKind::Text, PropValue::text(""), "Resistance value, shown as the label (e.g. 220, 4.7k)."),
-            PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Override label text (used instead of ohms)."),
+            PropertySpec::optional(
+                "ohms",
+                PropKind::Text,
+                PropValue::text(""),
+                "Resistance value, shown as the label (e.g. 220, 4.7k).",
+            ),
+            PropertySpec::optional(
+                "label",
+                PropKind::Text,
+                PropValue::text(""),
+                "Override label text (used instead of ohms).",
+            ),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
@@ -143,7 +163,14 @@ impl Symbol for Resistor {
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
         tt_ports(bounds, value_label(props, "ohms", "\u{2126}").is_some())
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let label = value_label(props, "ohms", "\u{2126}");
         let cy = tt_centerline(bounds, label.is_some());
         let (bl, br) = body_extent(bounds);
@@ -180,8 +207,18 @@ impl Symbol for Capacitor {
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
         vec![
-            PropertySpec::optional("farads", PropKind::Text, PropValue::text(""), "Capacitance value, shown as the label (e.g. 100n)."),
-            PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Override label text."),
+            PropertySpec::optional(
+                "farads",
+                PropKind::Text,
+                PropValue::text(""),
+                "Capacitance value, shown as the label (e.g. 100n).",
+            ),
+            PropertySpec::optional(
+                "label",
+                PropKind::Text,
+                PropValue::text(""),
+                "Override label text.",
+            ),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
@@ -190,7 +227,14 @@ impl Symbol for Capacitor {
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
         tt_ports(bounds, value_label(props, "farads", "F").is_some())
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let label = value_label(props, "farads", "F");
         let cy = tt_centerline(bounds, label.is_some());
         let gap = 6.0;
@@ -199,8 +243,16 @@ impl Symbol for Capacitor {
         let plate_r = mid + gap / 2.0;
         draw_leads(p, bounds, plate_l, plate_r, cy, style);
         let plate_h = 16.0;
-        p.line(Point::new(plate_l, cy - plate_h / 2.0), Point::new(plate_l, cy + plate_h / 2.0), stroke(style));
-        p.line(Point::new(plate_r, cy - plate_h / 2.0), Point::new(plate_r, cy + plate_h / 2.0), stroke(style));
+        p.line(
+            Point::new(plate_l, cy - plate_h / 2.0),
+            Point::new(plate_l, cy + plate_h / 2.0),
+            stroke(style),
+        );
+        p.line(
+            Point::new(plate_r, cy - plate_h / 2.0),
+            Point::new(plate_r, cy + plate_h / 2.0),
+            stroke(style),
+        );
         if let Some(l) = label {
             draw_label(p, bounds, &l, style);
         }
@@ -222,8 +274,18 @@ impl Symbol for Inductor {
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
         vec![
-            PropertySpec::optional("henries", PropKind::Text, PropValue::text(""), "Inductance value, shown as the label."),
-            PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Override label text."),
+            PropertySpec::optional(
+                "henries",
+                PropKind::Text,
+                PropValue::text(""),
+                "Inductance value, shown as the label.",
+            ),
+            PropertySpec::optional(
+                "label",
+                PropKind::Text,
+                PropValue::text(""),
+                "Override label text.",
+            ),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
@@ -232,7 +294,14 @@ impl Symbol for Inductor {
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
         tt_ports(bounds, value_label(props, "henries", "H").is_some())
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let label = value_label(props, "henries", "H");
         let cy = tt_centerline(bounds, label.is_some());
         let (bl, br) = body_extent(bounds);
@@ -253,7 +322,10 @@ impl Symbol for Inductor {
                 Point::new(x1, cy),
             ));
         }
-        p.path(cmds, ShapeStyle::outline(style.stroke, style.stroke_width.max(1.0)));
+        p.path(
+            cmds,
+            ShapeStyle::outline(style.stroke, style.stroke_width.max(1.0)),
+        );
         if let Some(l) = label {
             draw_label(p, bounds, &l, style);
         }
@@ -274,7 +346,12 @@ impl Symbol for Diode {
         "Diode (triangle + cathode bar), anode `a` to cathode `b`."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
-        vec![PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Optional label.")]
+        vec![PropertySpec::optional(
+            "label",
+            PropKind::Text,
+            PropValue::text(""),
+            "Optional label.",
+        )]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
         tt_size(!props.text_or("label", "").is_empty())
@@ -282,7 +359,14 @@ impl Symbol for Diode {
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
         tt_ports(bounds, !props.text_or("label", "").is_empty())
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let has_label = !props.text_or("label", "").is_empty();
         let cy = tt_centerline(bounds, has_label);
         let mid = bounds.center().x;
@@ -301,7 +385,11 @@ impl Symbol for Diode {
             filled(style),
         );
         // Cathode bar.
-        p.line(Point::new(tri_r, cy - half), Point::new(tri_r, cy + half), stroke(style));
+        p.line(
+            Point::new(tri_r, cy - half),
+            Point::new(tri_r, cy + half),
+            stroke(style),
+        );
         if has_label {
             draw_label(p, bounds, props.text_or("label", ""), style);
         }
@@ -323,8 +411,18 @@ impl Symbol for VoltageSource {
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
         vec![
-            PropertySpec::optional("volts", PropKind::Text, PropValue::text(""), "Voltage value, shown as the label."),
-            PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Override label text."),
+            PropertySpec::optional(
+                "volts",
+                PropKind::Text,
+                PropValue::text(""),
+                "Voltage value, shown as the label.",
+            ),
+            PropertySpec::optional(
+                "label",
+                PropKind::Text,
+                PropValue::text(""),
+                "Override label text.",
+            ),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
@@ -334,7 +432,14 @@ impl Symbol for VoltageSource {
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
         tt_ports(bounds, value_label(props, "volts", "V").is_some())
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let label = value_label(props, "volts", "V");
         let cy = tt_centerline(bounds, label.is_some());
         let mid = bounds.center().x;
@@ -343,9 +448,21 @@ impl Symbol for VoltageSource {
         p.circle(Point::new(mid, cy), r, outline(style));
         // + on the left half, - on the right half.
         let s = 4.0;
-        p.line(Point::new(mid - r * 0.45 - s, cy), Point::new(mid - r * 0.45 + s, cy), stroke(style));
-        p.line(Point::new(mid - r * 0.45, cy - s), Point::new(mid - r * 0.45, cy + s), stroke(style));
-        p.line(Point::new(mid + r * 0.45 - s, cy), Point::new(mid + r * 0.45 + s, cy), stroke(style));
+        p.line(
+            Point::new(mid - r * 0.45 - s, cy),
+            Point::new(mid - r * 0.45 + s, cy),
+            stroke(style),
+        );
+        p.line(
+            Point::new(mid - r * 0.45, cy - s),
+            Point::new(mid - r * 0.45, cy + s),
+            stroke(style),
+        );
+        p.line(
+            Point::new(mid + r * 0.45 - s, cy),
+            Point::new(mid + r * 0.45 + s, cy),
+            stroke(style),
+        );
         if let Some(l) = label {
             draw_label(p, bounds, &l, style);
         }
@@ -366,7 +483,12 @@ impl Symbol for Switch {
         "SPST switch (open). `label` is drawn above."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
-        vec![PropertySpec::optional("label", PropKind::Text, PropValue::text(""), "Optional label.")]
+        vec![PropertySpec::optional(
+            "label",
+            PropKind::Text,
+            PropValue::text(""),
+            "Optional label.",
+        )]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
         tt_size(!props.text_or("label", "").is_empty())
@@ -374,17 +496,32 @@ impl Symbol for Switch {
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
         tt_ports(bounds, !props.text_or("label", "").is_empty())
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let has_label = !props.text_or("label", "").is_empty();
         let cy = tt_centerline(bounds, has_label);
         let (bl, br) = body_extent(bounds);
         // Leads to the two contact dots.
         p.line(Point::new(bounds.x, cy), Point::new(bl, cy), stroke(style));
-        p.line(Point::new(br, cy), Point::new(bounds.right(), cy), stroke(style));
+        p.line(
+            Point::new(br, cy),
+            Point::new(bounds.right(), cy),
+            stroke(style),
+        );
         p.circle(Point::new(bl, cy), 1.6, filled(style));
         p.circle(Point::new(br, cy), 1.6, filled(style));
         // Open lever from the left dot, angled up to near the right dot.
-        p.line(Point::new(bl, cy), Point::new(br - 2.0, cy - 10.0), stroke(style));
+        p.line(
+            Point::new(bl, cy),
+            Point::new(br - 2.0, cy - 10.0),
+            stroke(style),
+        );
         if has_label {
             draw_label(p, bounds, props.text_or("label", ""), style);
         }
@@ -408,9 +545,20 @@ impl Symbol for Ground {
         Size::new(28.0, 26.0)
     }
     fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
-        vec![Port::new("a", Point::new(bounds.center().x, bounds.y), Dir::Up)]
+        vec![Port::new(
+            "a",
+            Point::new(bounds.center().x, bounds.y),
+            Dir::Up,
+        )]
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, _props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        _props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let cx = bounds.center().x;
         let top = bounds.y;
         // Vertical lead then three shrinking horizontal bars.
@@ -443,7 +591,14 @@ impl Symbol for Junction {
     fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
         vec![Port::new("c", bounds.center(), Dir::Right)]
     }
-    fn draw(&self, p: &mut Painter, bounds: Rect, _props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        _props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         p.circle(bounds.center(), 3.0, filled(style));
     }
 }
@@ -550,11 +705,36 @@ impl Symbol for Ic {
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
         vec![
-            PropertySpec::optional("name", PropKind::Text, PropValue::text("IC"), "Chip / module name shown in the center."),
-            PropertySpec::optional("left_pins", PropKind::List, PropValue::List(vec![]), "Pin names down the left side."),
-            PropertySpec::optional("right_pins", PropKind::List, PropValue::List(vec![]), "Pin names down the right side."),
-            PropertySpec::optional("top_pins", PropKind::List, PropValue::List(vec![]), "Pin names along the top."),
-            PropertySpec::optional("bottom_pins", PropKind::List, PropValue::List(vec![]), "Pin names along the bottom."),
+            PropertySpec::optional(
+                "name",
+                PropKind::Text,
+                PropValue::text("IC"),
+                "Chip / module name shown in the center.",
+            ),
+            PropertySpec::optional(
+                "left_pins",
+                PropKind::List,
+                PropValue::List(vec![]),
+                "Pin names down the left side.",
+            ),
+            PropertySpec::optional(
+                "right_pins",
+                PropKind::List,
+                PropValue::List(vec![]),
+                "Pin names down the right side.",
+            ),
+            PropertySpec::optional(
+                "top_pins",
+                PropKind::List,
+                PropValue::List(vec![]),
+                "Pin names along the top.",
+            ),
+            PropertySpec::optional(
+                "bottom_pins",
+                PropKind::List,
+                PropValue::List(vec![]),
+                "Pin names along the bottom.",
+            ),
         ]
     }
 
@@ -602,7 +782,14 @@ impl Symbol for Ic {
             .collect()
     }
 
-    fn draw(&self, p: &mut Painter, bounds: Rect, props: &Props, style: &Style, _m: &dyn TextMeasurer) {
+    fn draw(
+        &self,
+        p: &mut Painter,
+        bounds: Rect,
+        props: &Props,
+        style: &Style,
+        _m: &dyn TextMeasurer,
+    ) {
         let has_top = !Self::pins(props, "top_pins").is_empty();
         let has_bottom = !Self::pins(props, "bottom_pins").is_empty();
         let body = Self::body_rect(bounds, has_top, has_bottom);
@@ -685,7 +872,10 @@ mod tests {
         let mut p = Painter::new();
         r.draw(&mut p, bounds, &props, &Style::default(), &m);
         // Expect a zig-zag polyline and the value label.
-        assert!(p.primitives().iter().any(|x| matches!(x, Primitive::Polyline { .. })));
+        assert!(p
+            .primitives()
+            .iter()
+            .any(|x| matches!(x, Primitive::Polyline { .. })));
         assert!(p
             .primitives()
             .iter()
@@ -696,11 +886,14 @@ mod tests {
     fn resistor_label_changes_height() {
         let r = Resistor;
         let m = BasicMeasurer::default();
-        let with = r.measure(&{
-            let mut p = Props::new();
-            p.insert("ohms", PropValue::Number(1.0));
-            p
-        }, &m);
+        let with = r.measure(
+            &{
+                let mut p = Props::new();
+                p.insert("ohms", PropValue::Number(1.0));
+                p
+            },
+            &m,
+        );
         let without = r.measure(&Props::new(), &m);
         assert!(with.height > without.height);
     }
@@ -714,10 +907,7 @@ mod tests {
             "left_pins",
             PropValue::List(vec![PropValue::text("VCC"), PropValue::text("GND")]),
         );
-        props.insert(
-            "right_pins",
-            PropValue::List(vec![PropValue::text("CLK")]),
-        );
+        props.insert("right_pins", PropValue::List(vec![PropValue::text("CLK")]));
         let m = BasicMeasurer::default();
         let size = ic.measure(&props, &m);
         let bounds = Rect::from_origin_size(Point::ZERO, size);

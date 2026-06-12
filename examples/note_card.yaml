@@ -1,0 +1,46 @@
+# A note card sized to its content using variables + inline text measurement.
+#
+# Demonstrates: variables, expressions, the para_height() measurement function
+# (so the card height fits the wrapped body text without hand-computing it),
+# a `box` stack to layer content over a background, and wrapped paragraph text.
+
+vars:
+  pad: 14
+  title: "Design Note"
+  title_size: 16
+  body: "drawskill renders diagrams from a small, commented YAML language with
+         variables, expressions, and an auto-layout box model."
+  body_size: 12
+  body_width: 220
+  # Card width = body text width + padding on both sides.
+  card_w: ${body_width + pad * 2}
+  # Card height = top/bottom padding + title line + gap + measured body height.
+  card_h: ${pad * 2 + title_size + 8 + para_height(body, body_width, body_size)}
+
+canvas:
+  padding: 12
+  background: "#f7f7f9"
+  font: sans-serif
+
+root:
+  box:                          # stack: background rectangle with content on top
+    - rect:
+        rx: 8
+      id: card
+      width: ${card_w}
+      height: ${card_h}
+      fill: white
+      stroke: "#cccccc"
+    - vbox:                     # content, stretched to fill the card, padded inside
+        gap: 8
+        padding: ${pad}
+        align: start
+        children:
+          - text: ${title}
+            font_size: ${title_size}
+          - text: ${body}
+            wrap: ${body_width}
+            font_size: ${body_size}
+            color: "#444444"
+      width: grow
+      height: grow

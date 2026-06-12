@@ -45,11 +45,23 @@ impl PropertySpec {
         default: PropValue,
         description: &'static str,
     ) -> Self {
-        PropertySpec { name, kind, required: false, default: Some(default), description }
+        PropertySpec {
+            name,
+            kind,
+            required: false,
+            default: Some(default),
+            description,
+        }
     }
 
     pub fn required(name: &'static str, kind: PropKind, description: &'static str) -> Self {
-        PropertySpec { name, kind, required: true, default: None, description }
+        PropertySpec {
+            name,
+            kind,
+            required: true,
+            default: None,
+            description,
+        }
     }
 }
 
@@ -158,7 +170,11 @@ pub struct Port {
 
 impl Port {
     pub fn new(name: impl Into<String>, point: Point, dir: Dir) -> Self {
-        Port { name: name.into(), point, dir }
+        Port {
+            name: name.into(),
+            point,
+            dir,
+        }
     }
 }
 
@@ -240,7 +256,13 @@ impl Registry {
             self.symbols.insert(qualified, sym);
         }
         names.sort();
-        self.plugins.insert(id, PluginInfo { description: plugin.description().to_string(), symbol_names: names });
+        self.plugins.insert(
+            id,
+            PluginInfo {
+                description: plugin.description().to_string(),
+                symbol_names: names,
+            },
+        );
     }
 
     /// Look up a symbol by its qualified `"plugin.symbol"` name.
@@ -259,7 +281,13 @@ impl Registry {
     pub fn plugins(&self) -> Vec<(String, String, Vec<String>)> {
         self.plugins
             .iter()
-            .map(|(id, info)| (id.clone(), info.description.clone(), info.symbol_names.clone()))
+            .map(|(id, info)| {
+                (
+                    id.clone(),
+                    info.description.clone(),
+                    info.symbol_names.clone(),
+                )
+            })
             .collect()
     }
 }
@@ -280,7 +308,12 @@ mod tests {
             "a dot"
         }
         fn property_schema(&self) -> Vec<PropertySpec> {
-            vec![PropertySpec::optional("r", PropKind::Number, PropValue::Number(3.0), "radius")]
+            vec![PropertySpec::optional(
+                "r",
+                PropKind::Number,
+                PropValue::Number(3.0),
+                "radius",
+            )]
         }
         fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
             let r = props.number_or("r", 3.0);

@@ -1,0 +1,17 @@
+# A generic IC (microcontroller) with named pins on each side.
+#
+# Demonstrates: the schematic.ic symbol, which auto-sizes itself to fit the chip
+# name and the pin labels. Each named pin becomes a connectable port (e.g. U1.VCC).
+
+canvas:
+  padding: 20
+  background: white
+
+root:
+  symbol: schematic.ic
+  id: U1
+  props:
+    name: ATmega
+    left_pins:  [VCC, GND, RESET]
+    right_pins: [PB0, PB1, PB2, PB3]
+    top_pins:   [XTAL1, XTAL2]

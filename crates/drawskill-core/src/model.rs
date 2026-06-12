@@ -45,20 +45,15 @@ impl Default for Canvas {
 }
 
 /// How a node is sized along one axis.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum SizeSpec {
     /// Size to intrinsic content.
+    #[default]
     Auto,
     /// A fixed size in user units.
     Fixed(f64),
     /// Grow to fill leftover space, sharing it by this weight (flex grow).
     Grow(f64),
-}
-
-impl Default for SizeSpec {
-    fn default() -> Self {
-        SizeSpec::Auto
-    }
 }
 
 /// Per-side spacing.
@@ -72,7 +67,12 @@ pub struct Edges {
 
 impl Edges {
     pub fn all(v: f64) -> Self {
-        Edges { top: v, right: v, bottom: v, left: v }
+        Edges {
+            top: v,
+            right: v,
+            bottom: v,
+            left: v,
+        }
     }
 
     pub fn horizontal(&self) -> f64 {

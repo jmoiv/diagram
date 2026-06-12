@@ -108,7 +108,10 @@ impl Yv {
 
     /// Look up a key in a mapping.
     fn get(&self, key: &str) -> Option<&Yv> {
-        self.as_map()?.iter().find(|(k, _)| k == key).map(|(_, v)| v)
+        self.as_map()?
+            .iter()
+            .find(|(k, _)| k == key)
+            .map(|(_, v)| v)
     }
 }
 
@@ -220,7 +223,9 @@ fn eval_var_value(value: &Yv, ctx: &EvalContext) -> Result<EVal> {
             Yv::Str(s) => Ok(EVal::Str(s)),
             _ => Ok(EVal::Str(String::new())),
         },
-        other => Err(Error::Parse(format!("unsupported variable value: {other:?}"))),
+        other => Err(Error::Parse(format!(
+            "unsupported variable value: {other:?}"
+        ))),
     }
 }
 
@@ -333,7 +338,11 @@ fn build_document(root: &Yv) -> Result<Document> {
         }
     }
 
-    Ok(Document { canvas, root: root_node, connections })
+    Ok(Document {
+        canvas,
+        root: root_node,
+        connections,
+    })
 }
 
 fn parse_canvas(yv: &Yv) -> Result<Canvas> {
@@ -342,7 +351,13 @@ fn parse_canvas(yv: &Yv) -> Result<Canvas> {
     let padding = yv.get("padding").and_then(Yv::as_f64).unwrap_or(10.0);
     let background = yv.get("background").and_then(parse_color);
     let base_style = parse_style_patch(yv);
-    Ok(Canvas { width, height, padding, background, base_style })
+    Ok(Canvas {
+        width,
+        height,
+        padding,
+        background,
+        base_style,
+    })
 }
 
 /// `auto` (or null) means content-sized; a number means fixed.
@@ -423,14 +438,29 @@ fn parse_container(direction: Direction, type_val: &Yv, node: &Yv) -> Result<Nod
             children.push(parse_node(c)?);
         }
     } else if let Some(cy) = children_yv {
-        return Err(Error::Parse(format!("`children` must be a list, found {cy:?}")));
+        return Err(Error::Parse(format!(
+            "`children` must be a list, found {cy:?}"
+        )));
     }
 
     let gap = prop_src.get("gap").and_then(Yv::as_f64).unwrap_or(0.0);
     let padding = prop_src.get("padding").map(parse_edges).unwrap_or_default();
-    let align = prop_src.get("align").and_then(parse_align).unwrap_or(Align::Start);
-    let justify = prop_src.get("justify").and_then(parse_justify).unwrap_or(Justify::Start);
-    Ok(NodeKind::Container(Container { direction, children, gap, padding, align, justify }))
+    let align = prop_src
+        .get("align")
+        .and_then(parse_align)
+        .unwrap_or(Align::Start);
+    let justify = prop_src
+        .get("justify")
+        .and_then(parse_justify)
+        .unwrap_or(Justify::Start);
+    Ok(NodeKind::Container(Container {
+        direction,
+        children,
+        gap,
+        padding,
+        align,
+        justify,
+    }))
 }
 
 fn parse_symbol(val: &Yv) -> Result<NodeKind> {
@@ -439,7 +469,10 @@ fn parse_symbol(val: &Yv) -> Result<NodeKind> {
         .ok_or_else(|| Error::Parse("`symbol` value must be a \"plugin.name\" string".into()))?
         .to_string();
     // Props live under a sibling `props:` key and are attached by `attach_props`.
-    Ok(NodeKind::Symbol(SymbolNode { name, props: Props::new() }))
+    Ok(NodeKind::Symbol(SymbolNode {
+        name,
+        props: Props::new(),
+    }))
 }
 
 fn parse_props(node: &Yv) -> Props {
@@ -460,7 +493,9 @@ fn prop_value(v: &Yv) -> Option<PropValue> {
         Yv::Float(f) => Some(PropValue::Number(*f)),
         Yv::Bool(b) => Some(PropValue::Bool(*b)),
         Yv::Str(s) => Some(PropValue::Text(s.clone())),
-        Yv::Seq(items) => Some(PropValue::List(items.iter().filter_map(prop_value).collect())),
+        Yv::Seq(items) => Some(PropValue::List(
+            items.iter().filter_map(prop_value).collect(),
+        )),
         Yv::Null | Yv::Map(_) => None,
     }
 }
@@ -478,9 +513,10 @@ fn parse_text(val: &Yv, node: &Yv) -> Result<NodeKind> {
 }
 
 fn parse_line(val: &Yv) -> Result<NodeKind> {
-    let a = val.get("from").and_then(parse_point).ok_or_else(|| {
-        Error::Parse("`line` needs `from: [x, y]`".into())
-    })?;
+    let a = val
+        .get("from")
+        .and_then(parse_point)
+        .ok_or_else(|| Error::Parse("`line` needs `from: [x, y]`".into()))?;
     let b = val
         .get("to")
         .and_then(parse_point)
@@ -492,7 +528,10 @@ fn parse_rect(val: &Yv) -> Result<NodeKind> {
     let w = val.get("width").and_then(Yv::as_f64).unwrap_or(0.0);
     let h = val.get("height").and_then(Yv::as_f64).unwrap_or(0.0);
     let rx = val.get("rx").and_then(Yv::as_f64).unwrap_or(0.0);
-    Ok(NodeKind::Rect(RectShape { size: Size::new(w, h), rx }))
+    Ok(NodeKind::Rect(RectShape {
+        size: Size::new(w, h),
+        rx,
+    }))
 }
 
 fn parse_circle(val: &Yv) -> Result<NodeKind> {
@@ -539,13 +578,26 @@ fn parse_connect(yv: &Yv) -> Result<Connect> {
     };
     let label = yv.get("label").and_then(Yv::as_str).map(str::to_string);
     let style = parse_style_patch(yv);
-    Ok(Connect { from, to, style, routing, arrow, label })
+    Ok(Connect {
+        from,
+        to,
+        style,
+        routing,
+        arrow,
+        label,
+    })
 }
 
 fn parse_port_ref(s: &str) -> PortRef {
     match s.split_once('.') {
-        Some((node, port)) => PortRef { node: node.to_string(), port: Some(port.to_string()) },
-        None => PortRef { node: s.to_string(), port: None },
+        Some((node, port)) => PortRef {
+            node: node.to_string(),
+            port: Some(port.to_string()),
+        },
+        None => PortRef {
+            node: s.to_string(),
+            port: None,
+        },
     }
 }
 
@@ -584,8 +636,18 @@ fn parse_edges(yv: &Yv) -> Edges {
             let vals: Vec<f64> = items.iter().filter_map(Yv::as_f64).collect();
             match vals.as_slice() {
                 [a] => Edges::all(*a),
-                [v, h] => Edges { top: *v, bottom: *v, left: *h, right: *h },
-                [t, r, b, l] => Edges { top: *t, right: *r, bottom: *b, left: *l },
+                [v, h] => Edges {
+                    top: *v,
+                    bottom: *v,
+                    left: *h,
+                    right: *h,
+                },
+                [t, r, b, l] => Edges {
+                    top: *t,
+                    right: *r,
+                    bottom: *b,
+                    left: *l,
+                },
                 _ => Edges::default(),
             }
         }
@@ -743,7 +805,10 @@ struct PathTokenizer {
 
 impl PathTokenizer {
     fn new(s: &str) -> Self {
-        PathTokenizer { chars: s.chars().collect(), i: 0 }
+        PathTokenizer {
+            chars: s.chars().collect(),
+            i: 0,
+        }
     }
 
     fn skip_sep(&mut self) {
@@ -789,7 +854,9 @@ impl PathTokenizer {
             let c = self.chars[self.i];
             if c.is_ascii_digit() || c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-' {
                 // Allow sign only right after exponent.
-                if (c == '+' || c == '-') && !matches!(self.chars.get(self.i - 1), Some('e') | Some('E')) {
+                if (c == '+' || c == '-')
+                    && !matches!(self.chars.get(self.i - 1), Some('e') | Some('E'))
+                {
                     break;
                 }
                 self.i += 1;
@@ -804,7 +871,9 @@ impl PathTokenizer {
     }
 
     fn point(&mut self) -> Result<Option<Point>> {
-        let Some(x) = self.number()? else { return Ok(None) };
+        let Some(x) = self.number()? else {
+            return Ok(None);
+        };
         let y = self
             .number()?
             .ok_or_else(|| Error::Parse("path coordinate missing y".into()))?;
@@ -922,16 +991,33 @@ root:
     fn parses_size_specs() {
         assert_eq!(parse_size_spec(&Yv::Int(40)), SizeSpec::Fixed(40.0));
         assert_eq!(parse_size_spec(&Yv::Str("auto".into())), SizeSpec::Auto);
-        assert_eq!(parse_size_spec(&Yv::Str("grow".into())), SizeSpec::Grow(1.0));
-        assert_eq!(parse_size_spec(&Yv::Str("grow 2".into())), SizeSpec::Grow(2.0));
-        assert_eq!(parse_size_spec(&Yv::Str("grow:3".into())), SizeSpec::Grow(3.0));
+        assert_eq!(
+            parse_size_spec(&Yv::Str("grow".into())),
+            SizeSpec::Grow(1.0)
+        );
+        assert_eq!(
+            parse_size_spec(&Yv::Str("grow 2".into())),
+            SizeSpec::Grow(2.0)
+        );
+        assert_eq!(
+            parse_size_spec(&Yv::Str("grow:3".into())),
+            SizeSpec::Grow(3.0)
+        );
     }
 
     #[test]
     fn parses_edges_forms() {
         assert_eq!(parse_edges(&Yv::Int(4)), Edges::all(4.0));
         let two = Yv::Seq(vec![Yv::Int(2), Yv::Int(6)]);
-        assert_eq!(parse_edges(&two), Edges { top: 2.0, bottom: 2.0, left: 6.0, right: 6.0 });
+        assert_eq!(
+            parse_edges(&two),
+            Edges {
+                top: 2.0,
+                bottom: 2.0,
+                left: 6.0,
+                right: 6.0
+            }
+        );
     }
 
     #[test]
@@ -981,7 +1067,10 @@ connect:
 
     #[test]
     fn missing_root_errors() {
-        assert!(matches!(parse("canvas: { width: 10 }"), Err(Error::Parse(_))));
+        assert!(matches!(
+            parse("canvas: { width: 10 }"),
+            Err(Error::Parse(_))
+        ));
     }
 
     #[test]

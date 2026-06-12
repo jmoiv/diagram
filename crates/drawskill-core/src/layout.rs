@@ -16,8 +16,7 @@ use crate::error::{Error, Result};
 use crate::geom::{Point, Rect, Size};
 use crate::measure::TextMeasurer;
 use crate::model::{
-    Align, Arrow, Connect, Direction, Document, Justify, Node, NodeKind, PortRef, Routing,
-    SizeSpec,
+    Align, Arrow, Connect, Direction, Document, Justify, Node, NodeKind, PortRef, Routing, SizeSpec,
 };
 use crate::style::{Color, Style};
 use crate::symbols::{Dir, Port, Props, Registry, Symbol};
@@ -147,7 +146,8 @@ fn build<'a>(
         NodeKind::Text(t) => {
             let size = match t.wrap {
                 Some(w) => {
-                    let p = measurer.measure_paragraph(&t.text, w, &style.font_family, style.font_size);
+                    let p =
+                        measurer.measure_paragraph(&t.text, w, &style.font_family, style.font_size);
                     Size::new(p.width, p.height)
                 }
                 None => {
@@ -168,10 +168,20 @@ fn build<'a>(
         NodeKind::Spacer => (Size::ZERO, LKind::Leaf),
     };
 
-    Ok(LNode { model: node, style, intrinsic, kind })
+    Ok(LNode {
+        model: node,
+        style,
+        intrinsic,
+        kind,
+    })
 }
 
-fn container_intrinsic(dir: Direction, gap: f64, padding: crate::model::Edges, children: &[LNode]) -> Size {
+fn container_intrinsic(
+    dir: Direction,
+    gap: f64,
+    padding: crate::model::Edges,
+    children: &[LNode],
+) -> Size {
     let n = children.len();
     let (mut main, mut cross) = (0.0f64, 0.0f64);
     match dir {
@@ -282,7 +292,8 @@ fn place(lnode: &LNode, outer: Rect, measurer: &dyn TextMeasurer, out: &mut Layo
 
 fn record(out: &mut LayoutOut, id: Option<&str>, rect: Rect, ports: Vec<Port>) {
     if let Some(id) = id {
-        out.nodes.insert(id.to_string(), ResolvedNode { rect, ports });
+        out.nodes
+            .insert(id.to_string(), ResolvedNode { rect, ports });
     }
 }
 
@@ -350,9 +361,17 @@ fn place_container(
 
         let main_pos = cursor + mm_lead;
         let align = ch.model.align_self.unwrap_or(c.align);
-        let cross_pos = align_offset(align, cross_avail, child_cross + cross_margin(ch, dir)) + cm_lead;
+        let cross_pos =
+            align_offset(align, cross_avail, child_cross + cross_margin(ch, dir)) + cm_lead;
 
-        let outer_rect = rect_from_axes(dir, content.origin(), main_pos, cross_pos, child_main, child_cross);
+        let outer_rect = rect_from_axes(
+            dir,
+            content.origin(),
+            main_pos,
+            cross_pos,
+            child_main,
+            child_cross,
+        );
         // Re-expand to outer (add margins back) so place() can subtract them.
         let outer_rect = expand_margins(ch, outer_rect);
         place(ch, outer_rect, measurer, out);
@@ -385,7 +404,12 @@ fn cross_margin(ch: &LNode, dir: Direction) -> f64 {
     }
 }
 
-fn child_cross_size(c: &crate::model::Container, ch: &LNode, dir: Direction, cross_avail: f64) -> f64 {
+fn child_cross_size(
+    c: &crate::model::Container,
+    ch: &LNode,
+    dir: Direction,
+    cross_avail: f64,
+) -> f64 {
     let cross_axis = match dir {
         Direction::Row => Axis::Vertical,
         Direction::Column | Direction::Stack => Axis::Horizontal,
@@ -468,7 +492,14 @@ fn cross_of(dir: Direction, s: Size) -> f64 {
     }
 }
 
-fn rect_from_axes(dir: Direction, origin: Point, main: f64, cross: f64, main_sz: f64, cross_sz: f64) -> Rect {
+fn rect_from_axes(
+    dir: Direction,
+    origin: Point,
+    main: f64,
+    cross: f64,
+    main_sz: f64,
+    cross_sz: f64,
+) -> Rect {
     match dir {
         Direction::Row => Rect::new(origin.x + main, origin.y + cross, main_sz, cross_sz),
         Direction::Column | Direction::Stack => {
@@ -543,7 +574,8 @@ fn draw_leaf(lnode: &LNode, inner: Rect, measurer: &dyn TextMeasurer, prims: &mu
             let x = anchored_x(style, inner);
             match t.wrap {
                 Some(w) => {
-                    let p = measurer.layout_paragraph(&t.text, w, &style.font_family, style.font_size);
+                    let p =
+                        measurer.layout_paragraph(&t.text, w, &style.font_family, style.font_size);
                     let line = measurer.measure_line("Mg", &style.font_family, style.font_size);
                     for (i, wl) in p.lines.iter().enumerate() {
                         let baseline = inner.y + line.ascent + i as f64 * p.line_height;
@@ -573,7 +605,11 @@ fn draw_leaf(lnode: &LNode, inner: Rect, measurer: &dyn TextMeasurer, prims: &mu
             });
         }
         NodeKind::Rect(r) => {
-            prims.push(Primitive::Rect { rect: inner, rx: r.rx, style: shape_of(style) });
+            prims.push(Primitive::Rect {
+                rect: inner,
+                rx: r.rx,
+                style: shape_of(style),
+            });
         }
         NodeKind::Circle(_) => {
             let radius = inner.width.min(inner.height) / 2.0;
@@ -589,7 +625,10 @@ fn draw_leaf(lnode: &LNode, inner: Rect, measurer: &dyn TextMeasurer, prims: &mu
                 .iter()
                 .map(|c| translate_cmd(c, inner.x, inner.y))
                 .collect();
-            prims.push(Primitive::Path { cmds, style: shape_of(style) });
+            prims.push(Primitive::Path {
+                cmds,
+                style: shape_of(style),
+            });
         }
         NodeKind::Spacer | NodeKind::Container(_) | NodeKind::Symbol(_) => {}
     }
@@ -610,7 +649,10 @@ fn translate_cmd(c: &PathCmd, dx: f64, dy: f64) -> PathCmd {
 // Connections
 // ---------------------------------------------------------------------------
 
-fn resolve_port(r: &PortRef, nodes: &HashMap<String, ResolvedNode>) -> Result<(Point, Option<Dir>)> {
+fn resolve_port(
+    r: &PortRef,
+    nodes: &HashMap<String, ResolvedNode>,
+) -> Result<(Point, Option<Dir>)> {
     let node = nodes
         .get(&r.node)
         .ok_or_else(|| Error::UnknownPort(format!("no node with id '{}'", r.node)))?;
@@ -646,7 +688,10 @@ fn draw_connection(
         }
     };
 
-    prims.push(Primitive::Polyline { points: pts.clone(), stroke: stroke_of(&style) });
+    prims.push(Primitive::Polyline {
+        points: pts.clone(),
+        stroke: stroke_of(&style),
+    });
 
     // Arrowheads.
     if matches!(c.arrow, Arrow::End | Arrow::Both) {
@@ -721,7 +766,10 @@ mod tests {
     }
 
     fn text_node(s: &str) -> Node {
-        Node::new(NodeKind::Text(TextNode { text: s.to_string(), wrap: None }))
+        Node::new(NodeKind::Text(TextNode {
+            text: s.to_string(),
+            wrap: None,
+        }))
     }
 
     fn hbox(children: Vec<Node>, gap: f64) -> Node {
@@ -736,13 +784,20 @@ mod tests {
     }
 
     fn doc(root: Node) -> Document {
-        Document { canvas: Canvas::default(), root, connections: vec![] }
+        Document {
+            canvas: Canvas::default(),
+            root,
+            connections: vec![],
+        }
     }
 
     #[test]
     fn auto_canvas_fits_content_plus_padding() {
         // A 40x10 rect; canvas auto-sizes to rect + 2*padding(10) = 60x30.
-        let mut rect = Node::new(NodeKind::Rect(RectShape { size: Size::new(40.0, 10.0), rx: 0.0 }));
+        let mut rect = Node::new(NodeKind::Rect(RectShape {
+            size: Size::new(40.0, 10.0),
+            rx: 0.0,
+        }));
         rect.width = SizeSpec::Fixed(40.0);
         rect.height = SizeSpec::Fixed(10.0);
         let scene = layout_document(&doc(rect), &registry(), &BasicMeasurer::default()).unwrap();
@@ -751,7 +806,10 @@ mod tests {
 
     #[test]
     fn row_lays_children_left_to_right_with_gap() {
-        let mut a = Node::new(NodeKind::Rect(RectShape { size: Size::new(10.0, 10.0), rx: 0.0 }));
+        let mut a = Node::new(NodeKind::Rect(RectShape {
+            size: Size::new(10.0, 10.0),
+            rx: 0.0,
+        }));
         a.width = SizeSpec::Fixed(10.0);
         a.height = SizeSpec::Fixed(10.0);
         a.id = Some("a".into());
@@ -778,15 +836,16 @@ mod tests {
     #[test]
     fn grow_child_fills_remaining_space() {
         // Fixed canvas 120 wide; one fixed 20 child + one grow child share the row.
-        let mut canvas = Canvas::default();
-        canvas.width = Some(120.0);
-        canvas.height = Some(40.0);
-        canvas.padding = 10.0; // content width = 100
+        // content width = 120 - 2*padding(10) = 100.
+        let canvas = Canvas { width: Some(120.0), height: Some(40.0), padding: 10.0, ..Default::default() };
 
         let mut fixed = Node::new(NodeKind::Spacer);
         fixed.width = SizeSpec::Fixed(20.0);
         fixed.height = SizeSpec::Fixed(10.0);
-        let mut grow = Node::new(NodeKind::Rect(RectShape { size: Size::ZERO, rx: 0.0 }));
+        let mut grow = Node::new(NodeKind::Rect(RectShape {
+            size: Size::ZERO,
+            rx: 0.0,
+        }));
         grow.width = SizeSpec::Grow(1.0);
         grow.height = SizeSpec::Fixed(10.0);
         grow.id = Some("g".into());
@@ -799,7 +858,11 @@ mod tests {
             align: Align::Start,
             justify: Justify::Start,
         }));
-        let document = Document { canvas, root, connections: vec![] };
+        let document = Document {
+            canvas,
+            root,
+            connections: vec![],
+        };
         let scene = layout_document(&document, &registry(), &BasicMeasurer::default()).unwrap();
         let grow_rect = scene
             .primitives
@@ -810,12 +873,21 @@ mod tests {
             })
             .unwrap();
         // Content width 100, fixed 20 -> grow gets 80.
-        assert!((grow_rect.width - 80.0).abs() < 1e-9, "grow width was {}", grow_rect.width);
+        assert!(
+            (grow_rect.width - 80.0).abs() < 1e-9,
+            "grow width was {}",
+            grow_rect.width
+        );
     }
 
     #[test]
     fn text_emits_a_text_primitive() {
-        let scene = layout_document(&doc(text_node("hello")), &registry(), &BasicMeasurer::default()).unwrap();
+        let scene = layout_document(
+            &doc(text_node("hello")),
+            &registry(),
+            &BasicMeasurer::default(),
+        )
+        .unwrap();
         assert!(scene
             .primitives
             .iter()
@@ -825,10 +897,16 @@ mod tests {
     #[test]
     fn center_align_centers_cross_axis() {
         // Column with a wide and a narrow child, align center.
-        let mut wide = Node::new(NodeKind::Rect(RectShape { size: Size::new(40.0, 10.0), rx: 0.0 }));
+        let mut wide = Node::new(NodeKind::Rect(RectShape {
+            size: Size::new(40.0, 10.0),
+            rx: 0.0,
+        }));
         wide.width = SizeSpec::Fixed(40.0);
         wide.height = SizeSpec::Fixed(10.0);
-        let mut narrow = Node::new(NodeKind::Rect(RectShape { size: Size::new(10.0, 10.0), rx: 0.0 }));
+        let mut narrow = Node::new(NodeKind::Rect(RectShape {
+            size: Size::new(10.0, 10.0),
+            rx: 0.0,
+        }));
         narrow.width = SizeSpec::Fixed(10.0);
         narrow.height = SizeSpec::Fixed(10.0);
         narrow.id = Some("n".into());
@@ -852,7 +930,10 @@ mod tests {
         // Narrow (10 wide) centered under wide (40) -> offset 15 from wide's left.
         let wide_x = rects[0].x;
         let narrow_x = rects[1].x;
-        assert!((narrow_x - wide_x - 15.0).abs() < 1e-9, "narrow_x={narrow_x} wide_x={wide_x}");
+        assert!(
+            (narrow_x - wide_x - 15.0).abs() < 1e-9,
+            "narrow_x={narrow_x} wide_x={wide_x}"
+        );
     }
 
     #[test]
@@ -867,7 +948,10 @@ mod tests {
 
     #[test]
     fn connection_between_nodes_emits_polyline() {
-        let mut a = Node::new(NodeKind::Rect(RectShape { size: Size::new(10.0, 10.0), rx: 0.0 }));
+        let mut a = Node::new(NodeKind::Rect(RectShape {
+            size: Size::new(10.0, 10.0),
+            rx: 0.0,
+        }));
         a.width = SizeSpec::Fixed(10.0);
         a.height = SizeSpec::Fixed(10.0);
         a.id = Some("a".into());
@@ -876,8 +960,14 @@ mod tests {
         let root = hbox(vec![a, b], 20.0);
         let mut document = doc(root);
         document.connections.push(Connect {
-            from: PortRef { node: "a".into(), port: None },
-            to: PortRef { node: "b".into(), port: None },
+            from: PortRef {
+                node: "a".into(),
+                port: None,
+            },
+            to: PortRef {
+                node: "b".into(),
+                port: None,
+            },
             style: Default::default(),
             routing: Routing::Straight,
             arrow: Arrow::End,
@@ -885,10 +975,19 @@ mod tests {
         });
         let _ = Color::BLACK; // keep import used
         let scene = layout_document(&document, &registry(), &BasicMeasurer::default()).unwrap();
-        assert!(scene.primitives.iter().any(|p| matches!(p, Primitive::Polyline { .. })));
+        assert!(scene
+            .primitives
+            .iter()
+            .any(|p| matches!(p, Primitive::Polyline { .. })));
         // Arrowhead path + label text present.
-        assert!(scene.primitives.iter().any(|p| matches!(p, Primitive::Path { .. })));
-        assert!(scene.primitives.iter().any(|p| matches!(p, Primitive::Text { text, .. } if text == "x")));
+        assert!(scene
+            .primitives
+            .iter()
+            .any(|p| matches!(p, Primitive::Path { .. })));
+        assert!(scene
+            .primitives
+            .iter()
+            .any(|p| matches!(p, Primitive::Text { text, .. } if text == "x")));
     }
 
     #[test]
@@ -896,8 +995,14 @@ mod tests {
         let root = text_node("x");
         let mut document = doc(root);
         document.connections.push(Connect {
-            from: PortRef { node: "missing".into(), port: None },
-            to: PortRef { node: "also_missing".into(), port: None },
+            from: PortRef {
+                node: "missing".into(),
+                port: None,
+            },
+            to: PortRef {
+                node: "also_missing".into(),
+                port: None,
+            },
             style: Default::default(),
             routing: Routing::Straight,
             arrow: Arrow::None,

@@ -73,10 +73,16 @@ pub struct EvalContext<'a> {
 /// Evaluate an expression string to a [`Value`].
 pub fn eval(input: &str, ctx: &EvalContext) -> Result<Value> {
     let tokens = tokenize(input)?;
-    let mut parser = Parser { tokens, pos: 0, ctx };
+    let mut parser = Parser {
+        tokens,
+        pos: 0,
+        ctx,
+    };
     let v = parser.expr()?;
     if parser.pos != parser.tokens.len() {
-        return Err(Error::Expr(format!("unexpected trailing input in {input:?}")));
+        return Err(Error::Expr(format!(
+            "unexpected trailing input in {input:?}"
+        )));
     }
     Ok(v)
 }
@@ -324,20 +330,29 @@ impl<'a> Parser<'a> {
 
     fn call(&self, name: &str, args: Vec<Value>) -> Result<Value> {
         let font_of = |args: &[Value], idx: usize| -> String {
-            args.get(idx).map(|v| v.as_str()).unwrap_or_else(|| self.ctx.default_font.clone())
+            args.get(idx)
+                .map(|v| v.as_str())
+                .unwrap_or_else(|| self.ctx.default_font.clone())
         };
-        let nums = |args: &[Value]| -> Result<Vec<f64>> { args.iter().map(|v| v.as_num()).collect() };
+        let nums =
+            |args: &[Value]| -> Result<Vec<f64>> { args.iter().map(|v| v.as_num()).collect() };
 
         match name {
             "text_width" | "text_height" => {
                 if args.len() < 2 || args.len() > 3 {
-                    return Err(Error::Expr(format!("{name}(text, size[, font]) takes 2-3 args")));
+                    return Err(Error::Expr(format!(
+                        "{name}(text, size[, font]) takes 2-3 args"
+                    )));
                 }
                 let text = args[0].as_str();
                 let size = args[1].as_num()?;
                 let font = font_of(&args, 2);
                 let m = self.ctx.measurer.measure_line(&text, &font, size);
-                Ok(Value::Num(if name == "text_width" { m.width } else { m.height() }))
+                Ok(Value::Num(if name == "text_width" {
+                    m.width
+                } else {
+                    m.height()
+                }))
             }
             "para_width" | "para_height" => {
                 if args.len() < 3 || args.len() > 4 {
@@ -349,8 +364,15 @@ impl<'a> Parser<'a> {
                 let max_width = args[1].as_num()?;
                 let size = args[2].as_num()?;
                 let font = font_of(&args, 3);
-                let p = self.ctx.measurer.measure_paragraph(&text, max_width, &font, size);
-                Ok(Value::Num(if name == "para_width" { p.width } else { p.height }))
+                let p = self
+                    .ctx
+                    .measurer
+                    .measure_paragraph(&text, max_width, &font, size);
+                Ok(Value::Num(if name == "para_width" {
+                    p.width
+                } else {
+                    p.height
+                }))
             }
             "min" | "max" => {
                 let ns = nums(&args)?;
@@ -449,9 +471,15 @@ mod tests {
     fn text_measurement_functions() {
         let vars = HashMap::new();
         // BasicMeasurer: width = chars * 0.6 * size. "abcd" at 10 -> 24.
-        assert_eq!(eval_str("text_width(\"abcd\", 10)", &vars).unwrap(), Value::Num(24.0));
+        assert_eq!(
+            eval_str("text_width(\"abcd\", 10)", &vars).unwrap(),
+            Value::Num(24.0)
+        );
         // height = 1.0 * size for a single line (0.8 + 0.2).
-        assert_eq!(eval_str("text_height(\"x\", 20)", &vars).unwrap(), Value::Num(20.0));
+        assert_eq!(
+            eval_str("text_height(\"x\", 20)", &vars).unwrap(),
+            Value::Num(20.0)
+        );
         // Composed with arithmetic.
         assert_eq!(
             eval_str("text_width(\"ab\", 10) + 4", &vars).unwrap(),

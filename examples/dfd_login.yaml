@@ -1,0 +1,30 @@
+# Login data-flow diagram (DFD).
+#
+# Demonstrates: dataflow symbols (external entity, process, data store) laid out
+# in a row, connected with labeled, arrow-headed flows via their compass ports.
+
+vars:
+  gap: 50
+
+canvas:
+  padding: 20
+  background: white
+
+root:
+  hbox:
+    gap: ${gap}
+    align: center
+    children:
+      - symbol: dataflow.entity
+        id: user
+        props: { label: User }
+      - symbol: dataflow.process
+        id: p1
+        props: { label: Validate, number: 1 }
+      - symbol: dataflow.store
+        id: db
+        props: { label: Accounts, number: D1 }
+
+connect:
+  - { from: user.e, to: p1.w, arrow: end, label: credentials }
+  - { from: p1.e,   to: db.w, arrow: end, label: query }

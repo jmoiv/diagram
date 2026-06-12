@@ -26,7 +26,11 @@ fn build_registry() -> Registry {
 }
 
 #[derive(Parser)]
-#[command(name = "drawskill", version, about = "Render diagrams from a YAML language to SVG/PNG/PDF.")]
+#[command(
+    name = "drawskill",
+    version,
+    about = "Render diagrams from a YAML language to SVG/PNG/PDF."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -97,8 +101,18 @@ enum SymbolsCmd {
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.command {
-        Command::Render { input, output, format, scale } => cmd_render(input, output, format, scale),
-        Command::Measure { text_file, font, size, width } => cmd_measure(text_file, font, size, width),
+        Command::Render {
+            input,
+            output,
+            format,
+            scale,
+        } => cmd_render(input, output, format, scale),
+        Command::Measure {
+            text_file,
+            font,
+            size,
+            width,
+        } => cmd_measure(text_file, font, size, width),
         Command::Fonts { what } => cmd_fonts(what),
         Command::Symbols { what } => cmd_symbols(what),
     };
@@ -124,8 +138,9 @@ fn cmd_render(input: PathBuf, output: String, format: Option<String>, scale: f32
             if output == "-" {
                 return Err("when writing to stdout, pass --format svg|png|pdf".into());
             }
-            Format::from_path(std::path::Path::new(&output))
-                .ok_or_else(|| format!("cannot infer format from output {output:?}; pass --format"))?
+            Format::from_path(std::path::Path::new(&output)).ok_or_else(|| {
+                format!("cannot infer format from output {output:?}; pass --format")
+            })?
         }
     };
 
@@ -189,7 +204,9 @@ fn cmd_fonts(what: FontsCmd) -> CmdResult {
             })).collect::<Vec<_>>(),
         }),
         FontsCmd::Query { family } => {
-            let found = families.iter().find(|f| f.name.eq_ignore_ascii_case(&family));
+            let found = families
+                .iter()
+                .find(|f| f.name.eq_ignore_ascii_case(&family));
             serde_json::json!({
                 "query": family,
                 "available": found.is_some(),
@@ -261,7 +278,8 @@ fn read_text_source(path: &str) -> Result<String, Box<dyn std::error::Error>> {
         std::io::stdin().read_to_string(&mut s)?;
         Ok(s)
     } else {
-        std::fs::read_to_string(path).map_err(|e| format!("cannot read text file {path}: {e}").into())
+        std::fs::read_to_string(path)
+            .map_err(|e| format!("cannot read text file {path}: {e}").into())
     }
 }
 
@@ -284,6 +302,8 @@ fn prop_value_json(v: &PropValue) -> serde_json::Value {
         PropValue::Number(n) => serde_json::json!(n),
         PropValue::Text(s) => serde_json::json!(s),
         PropValue::Bool(b) => serde_json::json!(b),
-        PropValue::List(items) => serde_json::Value::Array(items.iter().map(prop_value_json).collect()),
+        PropValue::List(items) => {
+            serde_json::Value::Array(items.iter().map(prop_value_json).collect())
+        }
     }
 }

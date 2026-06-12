@@ -13,9 +13,6 @@ Highlights:
 - Mixes **semantic symbols** with **raw draw primitives** for fine-grained control.
 - **Pure Rust** — no system C libraries to install. `cargo build` is all you need.
 
-> **Status:** early development. This README's *Setup* section is complete so you can install
-> the toolchain; the rest of the implementation is in progress.
-
 ---
 
 ## Setup
@@ -103,8 +100,6 @@ cargo test
 
 ## Usage
 
-> These commands describe the intended interface; some are still being implemented.
-
 Render a diagram (output format is inferred from the file extension, or set with `--format`):
 
 ```sh
@@ -137,17 +132,53 @@ drawskill fonts query --family "DejaVu Sans"
 
 `drawskill` uses your **system fonts**; use `fonts list` to see what's installed.
 
+## The diagram language
+
+Diagrams are written in a small, commented YAML language: a tree of auto-laid-out nodes
+(`vbox`/`hbox`/`box` containers, `symbol`s, `text`, raw shapes) plus `connect`ions, with a
+`vars`/`${expression}` system that includes inline text measurement. For example:
+
+```yaml
+# A box whose width fits its title.
+vars:
+  title: "Hello"
+  pad: 12
+canvas: { padding: 10, background: white }
+root:
+  box:
+    - rect: { rx: 6 }
+      width: ${text_width(title, 16) + pad * 2}
+      height: 40
+      fill: "#eef"
+      stroke: "#88a"
+    - text: ${title}
+      font_size: 16
+```
+
+See [`examples/`](examples/) for complete diagrams (a schematic, an IC, a data-flow diagram,
+and an expression-driven note card), each rendered to `.svg` alongside its `.yaml`. The full
+language reference and symbol catalog live in [`skill/reference/`](skill/reference/).
+
+> Tip: inside YAML **flow** mappings (`{ ... }`), quote expressions — `{ width: "${w}" }` —
+> because the `}` would otherwise close the mapping. Block style needs no quoting.
+
+The two built-in symbol plugins are **schematic** (resistor, capacitor, inductor, diode,
+voltage source, switch, ground, junction, and a generic IC with named pins) and **dataflow**
+(process, external entity, data store, flow, trust boundary). Run `drawskill symbols list` to
+see them all and `drawskill symbols describe <plugin.name>` for a symbol's properties.
+
 ---
 
 ## Using it as a Claude skill
 
-The `skill/` directory contains the Claude skill (named `diagram`). Once the `drawskill`
-binary is built and on your `PATH`, install the skill by copying `skill/` into your Claude
-skills directory. Claude will then author the YAML, measure text and discover symbols via the
-CLI, and render diagrams for you on request.
+The `skill/` directory contains the Claude skill (named `diagram`), with `SKILL.md` and a
+`reference/` folder documenting the language and symbols. Once the `drawskill` binary is built
+and on your `PATH`, install the skill by copying `skill/` into your Claude skills directory
+(e.g. `~/.claude/skills/diagram/`). Claude will then discover symbols and fonts via the CLI,
+author the commented YAML, measure text when needed, and render diagrams for you on request.
 
 ---
 
 ## License
 
-TBD.
+Licensed under the [Apache License, Version 2.0](LICENSE).

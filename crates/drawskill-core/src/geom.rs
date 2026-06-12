@@ -20,7 +20,10 @@ impl Point {
 
     /// Translate the point by `(dx, dy)`.
     pub fn translate(self, dx: f64, dy: f64) -> Point {
-        Point { x: self.x + dx, y: self.y + dy }
+        Point {
+            x: self.x + dx,
+            y: self.y + dy,
+        }
     }
 }
 
@@ -32,7 +35,10 @@ pub struct Size {
 }
 
 impl Size {
-    pub const ZERO: Size = Size { width: 0.0, height: 0.0 };
+    pub const ZERO: Size = Size {
+        width: 0.0,
+        height: 0.0,
+    };
 
     pub fn new(width: f64, height: f64) -> Self {
         Size { width, height }
@@ -50,11 +56,21 @@ pub struct Rect {
 
 impl Rect {
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
-        Rect { x, y, width, height }
+        Rect {
+            x,
+            y,
+            width,
+            height,
+        }
     }
 
     pub fn from_origin_size(origin: Point, size: Size) -> Self {
-        Rect { x: origin.x, y: origin.y, width: size.width, height: size.height }
+        Rect {
+            x: origin.x,
+            y: origin.y,
+            width: size.width,
+            height: size.height,
+        }
     }
 
     pub fn origin(&self) -> Point {
@@ -130,6 +146,9 @@ mod tests {
 
     #[test]
     fn point_translate() {
-        assert_eq!(Point::new(1.0, 2.0).translate(3.0, 4.0), Point::new(4.0, 6.0));
+        assert_eq!(
+            Point::new(1.0, 2.0).translate(3.0, 4.0),
+            Point::new(4.0, 6.0)
+        );
     }
 }

@@ -32,7 +32,9 @@ impl Format {
 
     /// Infer the format from a file path's extension.
     pub fn from_path(path: &std::path::Path) -> Option<Format> {
-        path.extension().and_then(|e| e.to_str()).and_then(Format::from_extension)
+        path.extension()
+            .and_then(|e| e.to_str())
+            .and_then(Format::from_extension)
     }
 
     pub fn as_str(&self) -> &'static str {
@@ -91,15 +93,19 @@ pub fn svg_to_pdf(svg: &str) -> Result<Vec<u8>> {
     options.fontdb_mut().load_system_fonts();
     let tree = svg2pdf::usvg::Tree::from_str(svg, &options)
         .map_err(|e| Error::Render(format!("SVG parse failed: {e}")))?;
-    svg2pdf::to_pdf(&tree, svg2pdf::ConversionOptions::default(), svg2pdf::PageOptions::default())
-        .map_err(|e| Error::Render(format!("PDF conversion failed: {e}")))
+    svg2pdf::to_pdf(
+        &tree,
+        svg2pdf::ConversionOptions::default(),
+        svg2pdf::PageOptions::default(),
+    )
+    .map_err(|e| Error::Render(format!("PDF conversion failed: {e}")))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geom::{Point, Size};
     use crate::draw::{Primitive, ShapeStyle};
+    use crate::geom::{Point, Size};
     use crate::style::Color;
 
     fn sample_scene() -> Scene {
@@ -138,7 +144,10 @@ mod tests {
     fn renders_png_with_header_and_size() {
         let bytes = render(&sample_scene(), Format::Png, 2.0).unwrap();
         // PNG magic number.
-        assert_eq!(&bytes[0..8], &[0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1a, b'\n']);
+        assert_eq!(
+            &bytes[0..8],
+            &[0x89, b'P', b'N', b'G', b'\r', b'\n', 0x1a, b'\n']
+        );
         // IHDR width/height are big-endian u32 at offsets 16 and 20. Scale 2 => 160x80.
         let w = u32::from_be_bytes([bytes[16], bytes[17], bytes[18], bytes[19]]);
         let h = u32::from_be_bytes([bytes[20], bytes[21], bytes[22], bytes[23]]);
