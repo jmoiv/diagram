@@ -403,19 +403,33 @@ fn parse_node(yv: &Yv) -> Result<Node> {
     Ok(node)
 }
 
-fn parse_container(direction: Direction, children_val: &Yv, node: &Yv) -> Result<NodeKind> {
+fn parse_container(direction: Direction, type_val: &Yv, node: &Yv) -> Result<NodeKind> {
+    // A container value may be either the list of children directly (with layout props as
+    // siblings of the type key), or a map with a `children:` list plus layout props inside.
+    let (children_yv, prop_src): (Option<&Yv>, &Yv) = match type_val {
+        Yv::Seq(_) => (Some(type_val), node),
+        Yv::Map(_) => (type_val.get("children"), type_val),
+        Yv::Null => (None, node),
+        other => {
+            return Err(Error::Parse(format!(
+                "a container value must be a list of children or a map with `children:`, found {other:?}"
+            )))
+        }
+    };
+
     let mut children = Vec::new();
-    if let Some(seq) = children_val.as_seq() {
+    if let Some(seq) = children_yv.and_then(Yv::as_seq) {
         for c in seq {
             children.push(parse_node(c)?);
         }
-    } else if !matches!(children_val, Yv::Null) {
-        return Err(Error::Parse("a container's value must be a list of child nodes".into()));
+    } else if let Some(cy) = children_yv {
+        return Err(Error::Parse(format!("`children` must be a list, found {cy:?}")));
     }
-    let gap = node.get("gap").and_then(Yv::as_f64).unwrap_or(0.0);
-    let padding = node.get("padding").map(parse_edges).unwrap_or_default();
-    let align = node.get("align").and_then(parse_align).unwrap_or(Align::Start);
-    let justify = node.get("justify").and_then(parse_justify).unwrap_or(Justify::Start);
+
+    let gap = prop_src.get("gap").and_then(Yv::as_f64).unwrap_or(0.0);
+    let padding = prop_src.get("padding").map(parse_edges).unwrap_or_default();
+    let align = prop_src.get("align").and_then(parse_align).unwrap_or(Align::Start);
+    let justify = prop_src.get("justify").and_then(parse_justify).unwrap_or(Justify::Start);
     Ok(NodeKind::Container(Container { direction, children, gap, padding, align, justify }))
 }
 
