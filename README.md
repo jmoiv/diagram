@@ -41,6 +41,27 @@ cargo build --release
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed toolchain setup and the developer workflow.
 
+### Install the Claude skill
+
+drawskill includes a companion Claude skill (named `diagram`) so Claude can draw diagrams for
+you. The skill is embedded in the binary — install it with one command:
+
+```sh
+drawskill install
+```
+
+This finds the right `.claude` directory and writes the skill to `.claude/skills/diagram/`.
+It chooses the location by searching upward from the current directory:
+
+1. if a `.claude` directory already exists (here or in a parent), the skill goes there;
+2. otherwise, a new `.claude` is created next to the nearest `.git` (your repo root);
+3. otherwise, it's created in the current directory.
+
+Run it from inside a project to install the skill for that project, or from your home
+directory (which typically already has `~/.claude`) to install it globally. After installing,
+Claude will discover symbols and fonts via the CLI, author the commented YAML, measure text
+when needed, and render diagrams for you on request.
+
 ---
 
 ## Usage
@@ -151,16 +172,6 @@ boundary), and **shapes** (rectangle, circle, oval, explosion callout, block arr
 
 > Tip: inside YAML **flow** mappings (`{ ... }`), quote expressions — `{ width: "${w}" }` —
 > because the `}` would otherwise close the mapping. Block style needs no quoting.
-
----
-
-## Using it as a Claude skill
-
-The [`skill/`](skill/) directory contains the Claude skill (named `diagram`), with `SKILL.md`
-and a `reference/` folder documenting the language and symbols. Once the `drawskill` binary is
-on your `PATH`, install the skill by copying `skill/` into your Claude skills directory (e.g.
-`~/.claude/skills/diagram/`). Claude will then discover symbols and fonts via the CLI, author
-the commented YAML, measure text when needed, and render diagrams for you on request.
 
 ---
 

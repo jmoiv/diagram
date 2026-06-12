@@ -5,6 +5,12 @@
 //! - `measure` — measure text (single line or width-constrained paragraph) from a file.
 //! - `fonts`   — list/query available system fonts.
 //! - `symbols` — list symbols or describe one symbol's properties.
+//! - `install` — install the companion Claude skill into a `.claude/skills` directory.
+
+/// The Claude skill files, embedded so `drawskill install` is self-contained.
+const SKILL_MD: &str = include_str!("../../../skill/SKILL.md");
+const SKILL_LANGUAGE: &str = include_str!("../../../skill/reference/language.md");
+const SKILL_SYMBOLS: &str = include_str!("../../../skill/reference/symbols.md");
 
 use std::io::{Read, Write};
 use std::path::PathBuf;
@@ -78,6 +84,12 @@ enum Command {
         #[command(subcommand)]
         what: SymbolsCmd,
     },
+    /// Install the companion Claude skill (`diagram`) into a `.claude/skills` directory.
+    ///
+    /// Chooses the target by searching upward from the current directory: an existing
+    /// `.claude` directory wins; otherwise a new `.claude` is created beside the nearest
+    /// `.git`; otherwise it lands in the current directory.
+    Install,
 }
 
 #[derive(Subcommand)]
@@ -116,6 +128,7 @@ fn main() -> ExitCode {
         } => cmd_measure(text_file, font, size, width),
         Command::Fonts { what } => cmd_fonts(what),
         Command::Symbols { what } => cmd_symbols(what),
+        Command::Install => cmd_install(),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
@@ -127,6 +140,45 @@ fn main() -> ExitCode {
 }
 
 type CmdResult = Result<(), Box<dyn std::error::Error>>;
+
+/// Install the embedded `diagram` skill into the resolved `.claude/skills/diagram` directory.
+fn cmd_install() -> CmdResult {
+    let claude_dir = resolve_claude_dir()?;
+    let dest = claude_dir.join("skills").join("diagram");
+    std::fs::create_dir_all(dest.join("reference"))
+        .map_err(|e| format!("cannot create {}: {e}", dest.display()))?;
+
+    std::fs::write(dest.join("SKILL.md"), SKILL_MD)?;
+    std::fs::write(dest.join("reference").join("language.md"), SKILL_LANGUAGE)?;
+    std::fs::write(dest.join("reference").join("symbols.md"), SKILL_SYMBOLS)?;
+
+    eprintln!("installed the 'diagram' skill to {}", dest.display());
+    Ok(())
+}
+
+/// Decide which `.claude` directory the skill should be installed into:
+/// 1. an existing `.claude` in the current directory or any ancestor;
+/// 2. otherwise, a new `.claude` beside the nearest ancestor `.git` (the repo root);
+/// 3. otherwise, `.claude` in the current directory.
+fn resolve_claude_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let cwd = std::env::current_dir()?;
+
+    // 1. An existing `.claude` directory takes precedence.
+    for dir in cwd.ancestors() {
+        let candidate = dir.join(".claude");
+        if candidate.is_dir() {
+            return Ok(candidate);
+        }
+    }
+    // 2. Otherwise, sit beside the nearest `.git` (file or directory, for worktrees).
+    for dir in cwd.ancestors() {
+        if dir.join(".git").exists() {
+            return Ok(dir.join(".claude"));
+        }
+    }
+    // 3. Fall back to the current directory.
+    Ok(cwd.join(".claude"))
+}
 
 fn cmd_render(input: PathBuf, output: String, format: Option<String>, scale: f32) -> CmdResult {
     let source = std::fs::read_to_string(&input)

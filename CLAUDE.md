@@ -14,7 +14,7 @@ all that's needed. Keep it that way: do not add crates that require system C lib
 ```
 crates/
   drawskill-core/              # the engine (see Pipeline below)
-  drawskill-cli/               # the `drawskill` binary (render/measure/fonts/symbols)
+  drawskill-cli/               # the `drawskill` binary (render/measure/fonts/symbols/install)
     tests/cli.rs               # integration tests that drive the built binary
   drawskill-symbols-schematic/ # `schematic` plugin (resistor, ..., generic IC)
   drawskill-symbols-dataflow/  # `dataflow` (DFD) plugin

@@ -22,6 +22,22 @@ fn run(args: &[&str]) -> std::process::Output {
         .expect("failed to spawn drawskill")
 }
 
+fn run_in(dir: &Path, args: &[&str]) -> std::process::Output {
+    Command::new(bin())
+        .current_dir(dir)
+        .args(args)
+        .output()
+        .expect("failed to spawn drawskill")
+}
+
+/// A fresh, empty temp directory unique to `name`.
+fn fresh_dir(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("drawskill-it-{name}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
 #[test]
 fn renders_every_example_to_all_formats() {
     for example in [
@@ -248,4 +264,69 @@ fn symbols_describe_unknown_fails() {
     let output = run(&["symbols", "describe", "schematic.nope"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("unknown symbol"));
+}
+
+/// The installed skill tree we expect under a `.claude` directory.
+fn assert_skill_installed(claude_dir: &Path) {
+    let diagram = claude_dir.join("skills").join("diagram");
+    let skill_md = diagram.join("SKILL.md");
+    assert!(skill_md.is_file(), "missing {}", skill_md.display());
+    assert!(diagram.join("reference").join("language.md").is_file());
+    assert!(diagram.join("reference").join("symbols.md").is_file());
+    let contents = std::fs::read_to_string(&skill_md).unwrap();
+    assert!(
+        contents.contains("name: diagram"),
+        "SKILL.md frontmatter not embedded"
+    );
+}
+
+#[test]
+fn install_uses_existing_claude_in_ancestor() {
+    let root = fresh_dir("install-existing");
+    std::fs::create_dir_all(root.join(".claude")).unwrap();
+    let work = root.join("work");
+    std::fs::create_dir_all(&work).unwrap();
+
+    let output = run_in(&work, &["install"]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    // Installed into the existing ancestor `.claude`, not a new one in `work`.
+    assert_skill_installed(&root.join(".claude"));
+    assert!(
+        !work.join(".claude").exists(),
+        "should not create a second .claude"
+    );
+}
+
+#[test]
+fn install_creates_claude_beside_git() {
+    let root = fresh_dir("install-git");
+    std::fs::create_dir_all(root.join(".git")).unwrap();
+    let nested = root.join("work").join("nested");
+    std::fs::create_dir_all(&nested).unwrap();
+
+    let output = run_in(&nested, &["install"]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    // A new `.claude` is created beside `.git` at the repo root.
+    assert_skill_installed(&root.join(".claude"));
+}
+
+#[test]
+fn install_falls_back_to_current_dir() {
+    let root = fresh_dir("install-fallback");
+    // No `.claude` and no `.git` anywhere relevant -> install into the current directory.
+    let output = run_in(&root, &["install"]);
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_skill_installed(&root.join(".claude"));
 }
