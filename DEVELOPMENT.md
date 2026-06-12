@@ -82,3 +82,16 @@ crate-version coupling, etc.) are documented in [CLAUDE.md](CLAUDE.md).
    `README.md`.
 
 The full checklist (with rationale) is in [CLAUDE.md](CLAUDE.md).
+
+## Releasing
+
+Releases are built automatically by GitHub Actions when a version tag is pushed.
+Tag the commit you want to release on `main`:
+
+```sh
+git tag v0.x.y
+git push origin v0.x.y
+```
+
+The workflow builds binaries for all five platforms and publishes them to
+<https://github.com/jmoiv/diagram/releases>. CI (tests + lint) also runs on every push.

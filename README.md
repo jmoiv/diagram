@@ -18,14 +18,22 @@ drawing diagrams. You (or Claude) describe a diagram in a small, commented **YAM
 
 ### Option 1 — Download a prebuilt binary (recommended)
 
-Grab the latest release for your platform and put `diagram` somewhere on your `PATH`:
+Grab the latest release for your platform from the
+[releases page](https://github.com/jmoiv/diagram/releases) and put `diagram` somewhere on
+your `PATH`:
 
-> **Downloads:** _coming soon_ — `https://github.com/<owner>/diagram/releases` *(placeholder; link to be filled in)*
+| Platform | Download |
+|---|---|
+| Linux x86\_64 | [diagram-linux-x86_64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-linux-x86_64) |
+| Linux arm64 | [diagram-linux-aarch64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-linux-aarch64) |
+| macOS Intel | [diagram-macos-x86_64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-macos-x86_64) |
+| macOS Apple Silicon | [diagram-macos-aarch64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-macos-aarch64) |
+| Windows x86\_64 | [diagram-windows-x86_64.exe](https://github.com/jmoiv/diagram/releases/latest/download/diagram-windows-x86_64.exe) |
 
 ```sh
-# Example (Linux/macOS): after downloading and extracting the archive
-chmod +x diagram
-sudo mv diagram /usr/local/bin/
+# Linux / macOS: mark executable and move to PATH
+chmod +x diagram-linux-x86_64
+sudo mv diagram-linux-x86_64 /usr/local/bin/diagram
 diagram --help
 ```
 
