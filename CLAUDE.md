@@ -61,15 +61,18 @@ Before considering any change complete:
 2. **Lint + format clean:** `cargo clippy --workspace --all-targets` has no warnings, and
    `cargo fmt` has been run.
 3. **Examples stay in sync:** if you changed layout, rendering, a symbol's drawing, or the
-   language, **re-render the examples** and commit the updated SVGs, and eyeball at least one
-   PNG to confirm it still looks right:
+   language, **re-render the examples** — both the `examples/*.svg` and the README's
+   `docs/images/*.png` — and commit the updated artifacts, eyeballing at least one PNG to
+   confirm it still looks right:
    ```sh
    for f in rc_filter ic_atmega dfd_login note_card; do
-     ./target/debug/drawskill render examples/$f.yaml -o examples/$f.svg
+     ./target/release/drawskill render examples/$f.yaml -o examples/$f.svg
+     ./target/release/drawskill render examples/$f.yaml -o docs/images/$f.png --scale 2
    done
    ```
    If you add a feature worth showing, add a new commented `examples/<name>.yaml` (+ its
-   `.svg`) and include it in the `renders_every_example_to_all_formats` test list.
+   `.svg` and a `docs/images/<name>.png` if you reference it in the README), and include it in
+   the `renders_every_example_to_all_formats` test list.
 4. **Docs stay in sync:**
    - Changed the **language** (new node type, attribute, expression function, syntax rule)?
      Update `skill/reference/language.md` (and `SKILL.md` if it affects the workflow/rules).
