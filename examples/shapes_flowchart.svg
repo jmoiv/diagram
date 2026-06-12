@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="364" height="374.613" viewBox="0 0 364 374.613">
+  <rect x="0" y="0" width="364" height="374.613" fill="#ffffff"/>
+  <path d="M120 54 C120 69.464 98.51 82 72 82 C45.49 82 24 69.464 24 54 C24 38.536 45.49 26 72 26 C98.51 26 120 38.536 120 54 Z" fill="#d7ecff" stroke="#000000" stroke-width="1"/>
+  <text x="72" y="58.42" font-family="sans-serif" font-size="13" fill="#0b3d66" text-anchor="middle">Start</text>
+  <rect x="160" y="32" width="80" height="44" rx="8" fill="#e8ffe8" stroke="#000000" stroke-width="1"/>
+  <text x="200" y="58.42" font-family="sans-serif" font-size="13" fill="#14532d" text-anchor="middle">Process</text>
+  <circle cx="310" cy="54" r="30" fill="#fff3cd" stroke="#000000" stroke-width="1"/>
+  <text x="310" y="58.42" font-family="sans-serif" font-size="13" fill="#7a5b00" text-anchor="middle">OK?</text>
+  <path d="M196 112 L196 184 L213.5 184 L182 232 L150.5 184 L168 184 L168 112 Z" fill="#cfcfff" stroke="#000000" stroke-width="1"/>
+  <text x="182" y="152.42" font-family="sans-serif" font-size="13" fill="#000000" text-anchor="middle">next</text>
+  <path d="M182 260 L188.251 277.921 L201.658 264.487 L199.514 283.345 L217.422 277.058 L207.308 293.119 L226.171 295.225 L210.09 305.306 L226.171 315.388 L207.308 317.494 L217.422 333.555 L199.514 327.268 L201.658 346.126 L188.251 332.692 L182 350.613 L175.749 332.692 L162.342 346.126 L164.486 327.268 L146.578 333.555 L156.692 317.494 L137.829 315.388 L153.91 305.306 L137.829 295.225 L156.692 293.119 L146.578 277.058 L164.486 283.345 L162.342 264.487 L175.749 277.921 Z" fill="#ffd9d9" stroke="#000000" stroke-width="1"/>
+  <text x="182" y="309.386" font-family="sans-serif" font-size="12" fill="#7a0000" text-anchor="middle">Done!</text>
+  <polyline points="120,54 160,54" fill="none" stroke="#000000" stroke-width="1"/>
+  <path d="M160 54 L153 57.5 L153 50.5 Z" fill="#000000" stroke="#000000" stroke-width="1"/>
+  <polyline points="240,54 280,54" fill="none" stroke="#000000" stroke-width="1"/>
+  <path d="M280 54 L273 57.5 L273 50.5 Z" fill="#000000" stroke="#000000" stroke-width="1"/>
+</svg>

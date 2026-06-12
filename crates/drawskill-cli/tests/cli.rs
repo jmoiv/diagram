@@ -24,7 +24,13 @@ fn run(args: &[&str]) -> std::process::Output {
 
 #[test]
 fn renders_every_example_to_all_formats() {
-    for example in ["rc_filter", "ic_atmega", "dfd_login", "note_card"] {
+    for example in [
+        "rc_filter",
+        "ic_atmega",
+        "dfd_login",
+        "note_card",
+        "shapes_flowchart",
+    ] {
         let input = examples_dir().join(format!("{example}.yaml"));
         assert!(input.exists(), "missing example {input:?}");
 

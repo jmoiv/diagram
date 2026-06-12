@@ -1,0 +1,12 @@
+[package]
+name = "drawskill-symbols-shapes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Generic shape symbol plugin for drawskill (rectangle, circle, oval, explosion, arrow)."
+
+[dependencies]
+drawskill-core.workspace = true

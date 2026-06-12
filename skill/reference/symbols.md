@@ -58,3 +58,24 @@ All expose compass ports `n`, `e`, `s`, `w` (except `flow`, which uses `a`/`b`).
 
 Connections (`connect:`) draw the data flows between symbols; use the `flow` symbol only when
 you want a standalone arrow element.
+
+### `shapes` — generic shapes
+
+Plain building blocks with colored backgrounds. Every shape accepts `label` (text drawn
+inside), `fill` (background color — a name like `blue` or a `#hex`, default white), and
+`text_color` (label color, defaults to the inherited text color). The filled shapes expose
+compass ports `n`, `e`, `s`, `w`; `arrow` exposes its tail `a` and tip `b`.
+
+| Symbol             | Extra properties      | Ports            | Notes                                   |
+|--------------------|-----------------------|------------------|-----------------------------------------|
+| `shapes.rectangle` | `rx`                  | `n`, `e`, `s`, `w` | `rx` rounds the corners (0 = square).  |
+| `shapes.circle`    | —                     | `n`, `e`, `s`, `w` | Auto-sizes to a square fitting `label`. |
+| `shapes.oval`      | —                     | `n`, `e`, `s`, `w` | Ellipse.                                |
+| `shapes.explosion` | `spikes`              | `n`, `e`, `s`, `w` | Starburst callout (`spikes`, default 12). |
+| `shapes.arrow`     | `direction`           | `a` (tail), `b` (tip) | Block arrow; `direction` is right/left/up/down. |
+
+```yaml
+symbol: shapes.rectangle
+id: step
+props: { label: Process, fill: "#e8ffe8", text_color: "#14532d", rx: 8 }
+```

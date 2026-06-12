@@ -73,6 +73,8 @@ root:
   source, switch, ground, junction, and a generic **ic** with named pins.
 - **dataflow** plugin — DFD symbols: process, external entity, data store, flow arrow, trust
   boundary.
+- **shapes** plugin — generic shapes with colored backgrounds: rectangle, circle, oval,
+  explosion callout, and block arrow (each takes `fill` and `text_color`).
 - **Generic** — nested boxes, text (single line or wrapped), raw lines/rects/circles/paths,
   and labeled connections with arrows. Great for block diagrams, flowcharts, and architecture
   sketches even without a dedicated symbol set.

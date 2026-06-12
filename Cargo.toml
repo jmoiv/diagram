@@ -5,6 +5,7 @@ members = [
     "crates/drawskill-cli",
     "crates/drawskill-symbols-schematic",
     "crates/drawskill-symbols-dataflow",
+    "crates/drawskill-symbols-shapes",
 ]
 
 [workspace.package]
@@ -19,6 +20,7 @@ authors = ["drawskill contributors"]
 drawskill-core = { path = "crates/drawskill-core" }
 drawskill-symbols-schematic = { path = "crates/drawskill-symbols-schematic" }
 drawskill-symbols-dataflow = { path = "crates/drawskill-symbols-dataflow" }
+drawskill-symbols-shapes = { path = "crates/drawskill-symbols-shapes" }
 
 [profile.release]
 # Diagrams are small; favor a smaller, reasonably fast binary.

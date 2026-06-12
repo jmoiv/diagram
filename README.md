@@ -6,8 +6,9 @@ drawing diagrams. You (or Claude) describe a diagram in a small, commented **YAM
 
 - **Box-model auto-layout** (`vbox` / `hbox` / `box`) so you rarely place raw coordinates.
 - **Variables + expressions**, including inline text measurement, so sizes aren't hand-computed.
-- A **plugin system for symbol libraries** — ships with **schematic** (electronic) and
-  **dataflow / DFD** symbols, including a generic IC with named pins.
+- A **plugin system for symbol libraries** — ships with **schematic** (electronic),
+  **dataflow / DFD**, and **shapes** (generic colored rectangles, circles, ovals, explosion
+  callouts, and block arrows) symbols, including a generic IC with named pins.
 - Mixes **semantic symbols** with **raw draw primitives** for fine-grained control.
 - A single self-contained binary, no runtime dependencies.
 
@@ -110,6 +111,13 @@ Variables, inline text measurement (`para_height`), a `box` stack, and wrapped p
 
 ![Note card](docs/images/note_card.png)
 
+### Generic shapes
+
+The `shapes` plugin — colored rectangles, circles, ovals, an explosion callout, and a block
+arrow, each with `fill` and `text_color`. ([shapes_flowchart.yaml](examples/shapes_flowchart.yaml))
+
+![Generic shapes flowchart](docs/images/shapes_flowchart.png)
+
 ---
 
 ## The diagram language
@@ -136,10 +144,10 @@ root:
 ```
 
 The full language reference and symbol catalog live in
-[`skill/reference/`](skill/reference/). The two built-in symbol plugins are **schematic**
+[`skill/reference/`](skill/reference/). The built-in symbol plugins are **schematic**
 (resistor, capacitor, inductor, diode, voltage source, switch, ground, junction, and a generic
-IC with named pins) and **dataflow** (process, external entity, data store, flow, trust
-boundary).
+IC with named pins), **dataflow** (process, external entity, data store, flow, trust
+boundary), and **shapes** (rectangle, circle, oval, explosion callout, block arrow).
 
 > Tip: inside YAML **flow** mappings (`{ ... }`), quote expressions — `{ width: "${w}" }` —
 > because the `}` would otherwise close the mapping. Block style needs no quoting.

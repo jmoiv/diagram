@@ -837,7 +837,12 @@ mod tests {
     fn grow_child_fills_remaining_space() {
         // Fixed canvas 120 wide; one fixed 20 child + one grow child share the row.
         // content width = 120 - 2*padding(10) = 100.
-        let canvas = Canvas { width: Some(120.0), height: Some(40.0), padding: 10.0, ..Default::default() };
+        let canvas = Canvas {
+            width: Some(120.0),
+            height: Some(40.0),
+            padding: 10.0,
+            ..Default::default()
+        };
 
         let mut fixed = Node::new(NodeKind::Spacer);
         fixed.width = SizeSpec::Fixed(20.0);

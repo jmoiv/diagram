@@ -264,6 +264,7 @@ dependencies = [
  "drawskill-core",
  "drawskill-symbols-dataflow",
  "drawskill-symbols-schematic",
+ "drawskill-symbols-shapes",
  "serde_json",
 ]
 
@@ -286,6 +287,13 @@ dependencies = [
 
 [[package]]
 name = "drawskill-symbols-schematic"
+version = "0.1.0"
+dependencies = [
+ "drawskill-core",
+]
+
+[[package]]
+name = "drawskill-symbols-shapes"
 version = "0.1.0"
 dependencies = [
  "drawskill-core",

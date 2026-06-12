@@ -1,0 +1,46 @@
+# Generic shapes: a tiny flowchart-style diagram.
+#
+# Demonstrates: the `shapes` plugin (rectangle, circle, oval, explosion callout,
+# and block arrow), the per-shape `fill` (background color) and `text_color`
+# properties, and connecting shapes through their compass ports.
+
+canvas:
+  padding: 24
+  background: white
+  font: sans-serif
+
+root:
+  vbox:
+    gap: 28
+    align: center
+    children:
+
+      # A row of colored shapes laid out left-to-right.
+      - hbox:
+          gap: 40
+          align: center
+          children:
+            - symbol: shapes.oval            # rounded "start/end" terminator
+              id: start
+              props: { label: Start, fill: "#d7ecff", text_color: "#0b3d66" }
+            - symbol: shapes.rectangle       # a process step (rounded corners via rx)
+              id: step
+              props: { label: Process, fill: "#e8ffe8", text_color: "#14532d", rx: 8 }
+            - symbol: shapes.circle          # a decision/junction node
+              id: check
+              props: { label: "OK?", fill: "#fff3cd", text_color: "#7a5b00" }
+
+      # A big block arrow pointing down to the callout below.
+      - symbol: shapes.arrow
+        id: arrow
+        props: { direction: down, fill: "#cfcfff", label: next }
+
+      # A starburst callout to draw the eye.
+      - symbol: shapes.explosion
+        id: bang
+        props: { label: "Done!", fill: "#ffd9d9", text_color: "#7a0000", spikes: 14 }
+
+# Wire the top row together through compass ports.
+connect:
+  - { from: start.e, to: step.w, arrow: end }
+  - { from: step.e,  to: check.w, arrow: end }

@@ -22,6 +22,7 @@ fn build_registry() -> Registry {
     let mut reg = Registry::new();
     reg.register(&drawskill_symbols_schematic::Schematic);
     reg.register(&drawskill_symbols_dataflow::Dataflow);
+    reg.register(&drawskill_symbols_shapes::Shapes);
     reg
 }
 
