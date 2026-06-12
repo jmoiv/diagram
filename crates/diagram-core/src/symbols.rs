@@ -5,7 +5,7 @@
 //! implementing [`SymbolPlugin`]; they are registered into a [`Registry`], which resolves the
 //! qualified `"plugin.symbol"` names used in diagrams.
 //!
-//! Symbols declare a [`PropertySpec`] schema (so `drawskill symbols describe` can report it,
+//! Symbols declare a [`PropertySpec`] schema (so `diagram symbols describe` can report it,
 //! and so values can be validated/defaulted), compute their intrinsic [`Size`] (optionally
 //! measuring text), expose connection [`Port`]s, and draw themselves via a [`Painter`].
 

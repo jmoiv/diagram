@@ -4,8 +4,8 @@ The symbol library is a plugin system. Rather than memorize it, **query the CLI*
 source of truth and reflects any installed plugins:
 
 ```
-drawskill symbols list                      # every plugin and its symbols
-drawskill symbols describe schematic.ic     # one symbol's properties + defaults
+diagram symbols list                      # every plugin and its symbols
+diagram symbols describe schematic.ic     # one symbol's properties + defaults
 ```
 
 `symbols describe` prints each property's name, kind (`number`/`text`/`bool`/`list`/`enum`),

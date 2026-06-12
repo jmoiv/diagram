@@ -1,11 +1,11 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/drawskill-core",
-    "crates/drawskill-cli",
-    "crates/drawskill-symbols-schematic",
-    "crates/drawskill-symbols-dataflow",
-    "crates/drawskill-symbols-shapes",
+    "crates/diagram-core",
+    "crates/diagram-cli",
+    "crates/diagram-symbols-schematic",
+    "crates/diagram-symbols-dataflow",
+    "crates/diagram-symbols-shapes",
 ]
 
 [workspace.package]
@@ -13,14 +13,14 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.74"
 license = "Apache-2.0"
-repository = "https://github.com/jonorato/drawskill"
-authors = ["drawskill contributors"]
+repository = "https://github.com/jonorato/diagram"
+authors = ["diagram contributors"]
 
 [workspace.dependencies]
-drawskill-core = { path = "crates/drawskill-core" }
-drawskill-symbols-schematic = { path = "crates/drawskill-symbols-schematic" }
-drawskill-symbols-dataflow = { path = "crates/drawskill-symbols-dataflow" }
-drawskill-symbols-shapes = { path = "crates/drawskill-symbols-shapes" }
+diagram-core = { path = "crates/diagram-core" }
+diagram-symbols-schematic = { path = "crates/diagram-symbols-schematic" }
+diagram-symbols-dataflow = { path = "crates/diagram-symbols-dataflow" }
+diagram-symbols-shapes = { path = "crates/diagram-symbols-shapes" }
 
 [profile.release]
 # Diagrams are small; favor a smaller, reasonably fast binary.

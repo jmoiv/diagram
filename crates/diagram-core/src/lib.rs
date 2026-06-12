@@ -1,4 +1,4 @@
-//! drawskill core engine.
+//! diagram core engine.
 //!
 //! Pipeline: YAML text -> [`parse`] (with [`expr`] variable/expression resolution) ->
 //! [`model`] document -> [`layout`] (two-pass box model, using [`text`] measurement and

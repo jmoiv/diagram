@@ -1,4 +1,4 @@
-//! drawskill command-line interface.
+//! diagram command-line interface.
 //!
 //! Subcommands:
 //! - `render`  — render a YAML diagram to SVG/PNG/PDF.
@@ -7,7 +7,7 @@
 //! - `symbols` — list symbols or describe one symbol's properties.
 //! - `install` — install the companion Claude skill into a `.claude/skills` directory.
 
-/// The Claude skill files, embedded so `drawskill install` is self-contained.
+/// The Claude skill files, embedded so `diagram install` is self-contained.
 const SKILL_MD: &str = include_str!("../../../skill/SKILL.md");
 const SKILL_LANGUAGE: &str = include_str!("../../../skill/reference/language.md");
 const SKILL_SYMBOLS: &str = include_str!("../../../skill/reference/symbols.md");
@@ -18,23 +18,23 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use drawskill_core::measure::TextMeasurer;
-use drawskill_core::output::Format;
-use drawskill_core::symbols::{PropKind, PropValue, Registry};
-use drawskill_core::text::FontContext;
+use diagram_core::measure::TextMeasurer;
+use diagram_core::output::Format;
+use diagram_core::symbols::{PropKind, PropValue, Registry};
+use diagram_core::text::FontContext;
 
 /// Build a registry with the built-in symbol plugins registered.
 fn build_registry() -> Registry {
     let mut reg = Registry::new();
-    reg.register(&drawskill_symbols_schematic::Schematic);
-    reg.register(&drawskill_symbols_dataflow::Dataflow);
-    reg.register(&drawskill_symbols_shapes::Shapes);
+    reg.register(&diagram_symbols_schematic::Schematic);
+    reg.register(&diagram_symbols_dataflow::Dataflow);
+    reg.register(&diagram_symbols_shapes::Shapes);
     reg
 }
 
 #[derive(Parser)]
 #[command(
-    name = "drawskill",
+    name = "diagram",
     version,
     about = "Render diagrams from a YAML language to SVG/PNG/PDF."
 )]
@@ -133,7 +133,7 @@ fn main() -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("drawskill: error: {e}");
+            eprintln!("diagram: error: {e}");
             ExitCode::FAILURE
         }
     }
@@ -199,7 +199,7 @@ fn cmd_render(input: PathBuf, output: String, format: Option<String>, scale: f32
 
     let registry = build_registry();
     let measurer = FontContext::new();
-    let bytes = drawskill_core::render_to_bytes(&source, &registry, &measurer, fmt, scale)?;
+    let bytes = diagram_core::render_to_bytes(&source, &registry, &measurer, fmt, scale)?;
 
     if output == "-" {
         std::io::stdout().write_all(&bytes)?;
@@ -295,7 +295,7 @@ fn cmd_symbols(what: SymbolsCmd) -> CmdResult {
         SymbolsCmd::Describe { name } => {
             let sym = registry
                 .get(&name)
-                .ok_or_else(|| format!("unknown symbol {name:?} (try `drawskill symbols list`)"))?;
+                .ok_or_else(|| format!("unknown symbol {name:?} (try `diagram symbols list`)"))?;
             let props = sym
                 .property_schema()
                 .into_iter()

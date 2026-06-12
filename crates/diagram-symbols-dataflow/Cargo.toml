@@ -1,12 +1,12 @@
 [package]
-name = "drawskill-symbols-dataflow"
+name = "diagram-symbols-dataflow"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Data-flow diagram (DFD) symbol plugin for drawskill."
+description = "Data-flow diagram (DFD) symbol plugin for diagram."
 
 [dependencies]
-drawskill-core.workspace = true
+diagram-core.workspace = true

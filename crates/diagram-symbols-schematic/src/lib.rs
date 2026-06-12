@@ -1,15 +1,15 @@
-//! Schematic (electronic) symbols for drawskill.
+//! Schematic (electronic) symbols for diagram.
 //!
 //! Provides the `schematic` plugin with common two-terminal components (resistor, capacitor,
 //! inductor, diode, voltage source, switch), a ground symbol, a wire junction, and a generic
 //! [`ic`](Ic) with named pins. Two-terminal parts are drawn horizontally with connection
 //! ports `a` (left) and `b` (right); the IC exposes one port per named pin.
 
-use drawskill_core::draw::{Painter, PathCmd, ShapeStyle, Stroke};
-use drawskill_core::geom::{Point, Rect, Size};
-use drawskill_core::measure::TextMeasurer;
-use drawskill_core::style::{Style, TextAnchor};
-use drawskill_core::symbols::{
+use diagram_core::draw::{Painter, PathCmd, ShapeStyle, Stroke};
+use diagram_core::geom::{Point, Rect, Size};
+use diagram_core::measure::TextMeasurer;
+use diagram_core::style::{Style, TextAnchor};
+use diagram_core::symbols::{
     Dir, Port, PropKind, PropValue, PropertySpec, Props, Symbol, SymbolPlugin,
 };
 
@@ -69,7 +69,7 @@ fn value_label(props: &Props, key: &str, unit: &str) -> Option<String> {
     }
     match props.get(key) {
         Some(PropValue::Number(n)) => {
-            Some(format!("{}{}", drawskill_core::expr::format_num(*n), unit))
+            Some(format!("{}{}", diagram_core::expr::format_num(*n), unit))
         }
         Some(PropValue::Text(s)) if !s.is_empty() => Some(format!("{s}{unit}")),
         _ => None,
@@ -114,7 +114,7 @@ fn draw_label(p: &mut Painter, bounds: Rect, text: &str, style: &Style) {
     p.text(
         Point::new(bounds.center().x, bounds.y + LABEL_H - 3.0),
         text,
-        drawskill_core::draw::TextStyle {
+        diagram_core::draw::TextStyle {
             color: style.text_color,
             font_family: style.font_family.clone(),
             font_size: style.font_size.min(LABEL_H),
@@ -799,7 +799,7 @@ impl Symbol for Ic {
         p.text(
             body.center(),
             props.text_or("name", "IC"),
-            drawskill_core::draw::TextStyle {
+            diagram_core::draw::TextStyle {
                 color: style.text_color,
                 font_family: style.font_family.clone(),
                 font_size: 13.0,
@@ -813,7 +813,7 @@ impl Symbol for Ic {
             p.text(
                 pin.label_pos,
                 &pin.name,
-                drawskill_core::draw::TextStyle {
+                diagram_core::draw::TextStyle {
                     color: style.text_color,
                     font_family: style.font_family.clone(),
                     font_size: 11.0,
@@ -827,9 +827,9 @@ impl Symbol for Ic {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use drawskill_core::draw::Primitive;
-    use drawskill_core::measure::BasicMeasurer;
-    use drawskill_core::symbols::Registry;
+    use diagram_core::draw::Primitive;
+    use diagram_core::measure::BasicMeasurer;
+    use diagram_core::symbols::Registry;
 
     fn registry() -> Registry {
         let mut r = Registry::new();

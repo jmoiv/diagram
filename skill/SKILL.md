@@ -1,26 +1,26 @@
 ---
 name: diagram
-description: Draw diagrams (schematics, data-flow diagrams, block diagrams, flowcharts) and render them to PNG, SVG, or PDF. Use when the user asks to draw, diagram, sketch, or visualize a circuit, system, architecture, data flow, or similar — anything built from labeled boxes, symbols, and connections. Authors a small commented YAML language and renders it with the `drawskill` CLI.
+description: Draw diagrams (schematics, data-flow diagrams, block diagrams, flowcharts) and render them to PNG, SVG, or PDF. Use when the user asks to draw, diagram, sketch, or visualize a circuit, system, architecture, data flow, or similar — anything built from labeled boxes, symbols, and connections. Authors a small commented YAML language and renders it with the `diagram` CLI.
 ---
 
-# Drawing diagrams with drawskill
+# Drawing diagrams with diagram
 
-`drawskill` renders diagrams from a small YAML language. You write a `.yaml` file describing
+`diagram` renders diagrams from a small YAML language. You write a `.yaml` file describing
 a tree of laid-out nodes (boxes, symbols, text, shapes) plus connections, then run the CLI to
 render it to **PNG**, **SVG**, or **PDF**.
 
 ## Workflow
 
 1. **Discover what's available** before authoring:
-   - `drawskill symbols list` — all symbol plugins and their symbols.
-   - `drawskill symbols describe <plugin.name>` — a symbol's properties (e.g.
-     `drawskill symbols describe schematic.ic`).
-   - `drawskill fonts list` / `drawskill fonts query --family "Name"` — available system fonts.
+   - `diagram symbols list` — all symbol plugins and their symbols.
+   - `diagram symbols describe <plugin.name>` — a symbol's properties (e.g.
+     `diagram symbols describe schematic.ic`).
+   - `diagram fonts list` / `diagram fonts query --family "Name"` — available system fonts.
 2. **Author** a commented `.yaml` file (see `reference/language.md` for the full spec).
 3. **Render** to the format the user asked for:
    ```
-   drawskill render diagram.yaml -o diagram.png        # or .svg / .pdf
-   drawskill render diagram.yaml -o out.png --scale 2  # higher-res PNG
+   diagram render diagram.yaml -o diagram.png        # or .svg / .pdf
+   diagram render diagram.yaml -o out.png --scale 2  # higher-res PNG
    ```
 4. **Look at the result** (open/inspect the PNG) and iterate.
 
@@ -42,7 +42,7 @@ render it to **PNG**, **SVG**, or **PDF**.
 - **Let the tool measure text.** To size something to text, use the inline measurement
   functions in expressions (`text_width`, `para_height`, …) instead of guessing. For example:
   `width: ${text_width(title, 16) + 24}`. If you need exact numbers up front, write the text to
-  a temp file and run `drawskill measure --text-file /tmp/t.txt --size 16` (and `--width N` for
+  a temp file and run `diagram measure --text-file /tmp/t.txt --size 16` (and `--width N` for
   a wrapped paragraph). Always pass text via a file, never as a shell argument.
 
 ## Minimal example

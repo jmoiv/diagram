@@ -1,11 +1,11 @@
 # Development
 
-How to build drawskill from source and work on it. For an architectural overview and the
+How to build diagram from source and work on it. For an architectural overview and the
 "definition of done" checklist applied to every change, see [CLAUDE.md](CLAUDE.md).
 
 ## Prerequisites — install Rust and Cargo
 
-drawskill builds with Cargo and has **no system-library dependencies** — the Rust toolchain is
+diagram builds with Cargo and has **no system-library dependencies** — the Rust toolchain is
 the only prerequisite. The recommended installer is [`rustup`](https://rustup.rs), which
 installs the compiler (`rustc`), the build tool (`cargo`), and keeps them updated.
 
@@ -36,11 +36,11 @@ cargo --version
 
 ```sh
 cargo build              # debug build
-cargo build --release    # optimized -> target/release/drawskill
+cargo build --release    # optimized -> target/release/diagram
 ```
 
 The first build downloads and compiles dependencies and may take a few minutes. Run the binary
-directly (`./target/release/drawskill --help`) or via Cargo (`cargo run -- --help`).
+directly (`./target/release/diagram --help`) or via Cargo (`cargo run -- --help`).
 
 ## Test, lint, format
 
@@ -54,10 +54,10 @@ cargo fmt                                # format
 
 ```
 crates/
-  drawskill-core/              # engine: parse -> model -> layout -> render -> output
-  drawskill-cli/               # the `drawskill` binary; tests/cli.rs drives it end-to-end
-  drawskill-symbols-schematic/ # `schematic` plugin
-  drawskill-symbols-dataflow/  # `dataflow` (DFD) plugin
+  diagram-core/              # engine: parse -> model -> layout -> render -> output
+  diagram-cli/               # the `diagram` binary; tests/cli.rs drives it end-to-end
+  diagram-symbols-schematic/ # `schematic` plugin
+  diagram-symbols-dataflow/  # `dataflow` (DFD) plugin
 skill/                         # the Claude skill (SKILL.md + reference/)
 examples/                      # commented *.yaml + rendered *.svg (kept in sync)
 docs/images/                   # rendered PNGs used by README.md
@@ -74,8 +74,8 @@ crate-version coupling, etc.) are documented in [CLAUDE.md](CLAUDE.md).
    commit the updated artifacts, and eyeball a PNG.
    ```sh
    for f in rc_filter ic_atmega dfd_login note_card; do
-     ./target/release/drawskill render examples/$f.yaml -o examples/$f.svg
-     ./target/release/drawskill render examples/$f.yaml -o docs/images/$f.png --scale 2
+     ./target/release/diagram render examples/$f.yaml -o examples/$f.svg
+     ./target/release/diagram render examples/$f.yaml -o docs/images/$f.png --scale 2
    done
    ```
 4. Update docs that went stale: `skill/reference/language.md`, `skill/reference/symbols.md`,

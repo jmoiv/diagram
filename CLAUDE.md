@@ -4,7 +4,7 @@ Guidance for working in this repository.
 
 ## What this is
 
-**drawskill** is a pure-Rust diagram renderer plus a companion Claude skill. You describe a
+**diagram** is a pure-Rust diagram renderer plus a companion Claude skill. You describe a
 diagram in a small, commented YAML language; the engine lays it out (auto box model) and
 renders it to **SVG, PNG, or PDF**. There are **no system dependencies** — `cargo build` is
 all that's needed. Keep it that way: do not add crates that require system C libraries.
@@ -13,18 +13,18 @@ all that's needed. Keep it that way: do not add crates that require system C lib
 
 ```
 crates/
-  drawskill-core/              # the engine (see Pipeline below)
-  drawskill-cli/               # the `drawskill` binary (render/measure/fonts/symbols/install)
+  diagram-core/              # the engine (see Pipeline below)
+  diagram-cli/               # the `diagram` binary (render/measure/fonts/symbols/install)
     tests/cli.rs               # integration tests that drive the built binary
-  drawskill-symbols-schematic/ # `schematic` plugin (resistor, ..., generic IC)
-  drawskill-symbols-dataflow/  # `dataflow` (DFD) plugin
+  diagram-symbols-schematic/ # `schematic` plugin (resistor, ..., generic IC)
+  diagram-symbols-dataflow/  # `dataflow` (DFD) plugin
 skill/                         # the Claude skill (name: diagram)
   SKILL.md
   reference/{language,symbols}.md
 examples/                      # *.yaml (commented) + rendered *.svg (kept in sync)
 ```
 
-## Pipeline (drawskill-core modules)
+## Pipeline (diagram-core modules)
 
 YAML → `parse` (saphyr load → owned `Yv` tree → `vars` + `${expr}` interpolation) → typed
 `model` → `layout` (two-pass box model: intrinsic sizing, then placement with
@@ -40,14 +40,14 @@ CLI registers both plugins in `build_registry()`.
 
 ```sh
 cargo build                              # debug build
-cargo build --release                    # -> target/release/drawskill
+cargo build --release                    # -> target/release/diagram
 cargo test --workspace                   # all unit + integration tests
 cargo fmt                                # format
 cargo clippy --workspace --all-targets   # lint
 
 # Render / inspect while iterating:
-./target/debug/drawskill render examples/rc_filter.yaml -o /tmp/out.png --scale 2
-./target/debug/drawskill symbols describe schematic.ic
+./target/debug/diagram render examples/rc_filter.yaml -o /tmp/out.png --scale 2
+./target/debug/diagram symbols describe schematic.ic
 ```
 
 ## Definition of done — do these for EVERY change
@@ -56,7 +56,7 @@ Before considering any change complete:
 
 1. **Tests pass:** `cargo test --workspace` is green. Add or update tests for the behavior
    you changed — unit tests live next to the code (`#[cfg(test)]`); end-to-end/CLI tests live
-   in `crates/drawskill-cli/tests/cli.rs`. New surface area (a symbol, a language feature, an
+   in `crates/diagram-cli/tests/cli.rs`. New surface area (a symbol, a language feature, an
    expression function, a CLI flag) **must** come with tests.
 2. **Lint + format clean:** `cargo clippy --workspace --all-targets` has no warnings, and
    `cargo fmt` has been run.
@@ -66,8 +66,8 @@ Before considering any change complete:
    confirm it still looks right:
    ```sh
    for f in rc_filter ic_atmega dfd_login note_card; do
-     ./target/release/drawskill render examples/$f.yaml -o examples/$f.svg
-     ./target/release/drawskill render examples/$f.yaml -o docs/images/$f.png --scale 2
+     ./target/release/diagram render examples/$f.yaml -o examples/$f.svg
+     ./target/release/diagram render examples/$f.yaml -o docs/images/$f.png --scale 2
    done
    ```
    If you add a feature worth showing, add a new commented `examples/<name>.yaml` (+ its
@@ -77,7 +77,7 @@ Before considering any change complete:
    - Changed the **language** (new node type, attribute, expression function, syntax rule)?
      Update `skill/reference/language.md` (and `SKILL.md` if it affects the workflow/rules).
    - Added or changed a **symbol** or its properties? Update `skill/reference/symbols.md`.
-     Property schemas are also surfaced by `drawskill symbols describe`, so keep the in-code
+     Property schemas are also surfaced by `diagram symbols describe`, so keep the in-code
      `property_schema()` accurate.
    - Changed the **CLI** or setup? Update `README.md`.
 5. **Comment as the language asks:** example YAML must be liberally commented (the skill tells

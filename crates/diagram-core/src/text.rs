@@ -3,7 +3,7 @@
 //! [`FontContext`] owns a `cosmic-text` `FontSystem` (which loads the system fonts once) and
 //! implements [`TextMeasurer`]. The same system fonts are used by the SVG renderer (`usvg`
 //! also reads `fontdb`), so measured sizes match the rendered glyphs. It also powers the
-//! `drawskill fonts` command via [`FontContext::families`].
+//! `diagram fonts` command via [`FontContext::families`].
 
 use std::cell::RefCell;
 

@@ -1,4 +1,4 @@
-//! Generic shape symbols for drawskill.
+//! Generic shape symbols for diagram.
 //!
 //! Provides the `shapes` plugin: `rectangle`, `circle`, `oval` (ellipse), `explosion`
 //! (a starburst callout), and `arrow` (a big block arrow). Every shape accepts a `fill`
@@ -6,11 +6,11 @@
 //! shapes (`rectangle`, `circle`, `oval`, `explosion`) expose compass ports `n`, `e`, `s`,
 //! `w`; `arrow` exposes its tail port `a` and tip port `b`.
 
-use drawskill_core::draw::{Painter, PathCmd, ShapeStyle, TextStyle};
-use drawskill_core::geom::{Point, Rect, Size};
-use drawskill_core::measure::TextMeasurer;
-use drawskill_core::style::{Color, Style, TextAnchor};
-use drawskill_core::symbols::{
+use diagram_core::draw::{Painter, PathCmd, ShapeStyle, TextStyle};
+use diagram_core::geom::{Point, Rect, Size};
+use diagram_core::measure::TextMeasurer;
+use diagram_core::style::{Color, Style, TextAnchor};
+use diagram_core::symbols::{
     Dir, Port, PropKind, PropValue, PropertySpec, Props, Symbol, SymbolPlugin,
 };
 
@@ -519,9 +519,9 @@ impl Symbol for Arrow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use drawskill_core::draw::Primitive;
-    use drawskill_core::measure::BasicMeasurer;
-    use drawskill_core::symbols::Registry;
+    use diagram_core::draw::Primitive;
+    use diagram_core::measure::BasicMeasurer;
+    use diagram_core::symbols::Registry;
 
     fn registry() -> Registry {
         let mut r = Registry::new();

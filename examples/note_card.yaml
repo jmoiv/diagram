@@ -8,7 +8,7 @@ vars:
   pad: 14
   title: "Design Note"
   title_size: 16
-  body: "drawskill renders diagrams from a small, commented YAML language with
+  body: "diagram renders diagrams from a small, commented YAML language with
          variables, expressions, and an auto-layout box model."
   body_size: 12
   body_width: 220

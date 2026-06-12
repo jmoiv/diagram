@@ -1,10 +1,10 @@
-//! Integration tests that drive the built `drawskill` binary end-to-end.
+//! Integration tests that drive the built `diagram` binary end-to-end.
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn bin() -> &'static str {
-    env!("CARGO_BIN_EXE_drawskill")
+    env!("CARGO_BIN_EXE_diagram")
 }
 
 fn examples_dir() -> PathBuf {
@@ -12,14 +12,14 @@ fn examples_dir() -> PathBuf {
 }
 
 fn tmp(name: &str) -> PathBuf {
-    std::env::temp_dir().join(format!("drawskill-it-{name}"))
+    std::env::temp_dir().join(format!("diagram-it-{name}"))
 }
 
 fn run(args: &[&str]) -> std::process::Output {
     Command::new(bin())
         .args(args)
         .output()
-        .expect("failed to spawn drawskill")
+        .expect("failed to spawn diagram")
 }
 
 fn run_in(dir: &Path, args: &[&str]) -> std::process::Output {
@@ -27,12 +27,12 @@ fn run_in(dir: &Path, args: &[&str]) -> std::process::Output {
         .current_dir(dir)
         .args(args)
         .output()
-        .expect("failed to spawn drawskill")
+        .expect("failed to spawn diagram")
 }
 
 /// A fresh, empty temp directory unique to `name`.
 fn fresh_dir(name: &str) -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("drawskill-it-{name}"));
+    let dir = std::env::temp_dir().join(format!("diagram-it-{name}"));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir

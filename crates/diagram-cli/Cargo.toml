@@ -1,21 +1,21 @@
 [package]
-name = "drawskill-cli"
+name = "diagram-cli"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Command-line interface for drawskill."
+description = "Command-line interface for diagram."
 
 [[bin]]
-name = "drawskill"
+name = "diagram"
 path = "src/main.rs"
 
 [dependencies]
-drawskill-core.workspace = true
-drawskill-symbols-schematic.workspace = true
-drawskill-symbols-dataflow.workspace = true
-drawskill-symbols-shapes.workspace = true
+diagram-core.workspace = true
+diagram-symbols-schematic.workspace = true
+diagram-symbols-dataflow.workspace = true
+diagram-symbols-shapes.workspace = true
 clap = { version = "4.5.61", features = ["derive"] }
 serde_json = "1.0.150"

@@ -1,15 +1,15 @@
-//! Data-flow diagram (DFD) symbols for drawskill.
+//! Data-flow diagram (DFD) symbols for diagram.
 //!
 //! Provides the `dataflow` plugin: `process` (circle), `entity` (external entity rectangle),
 //! `store` (open-ended data store), `flow` (a labeled arrow), and `boundary` (a dashed trust
 //! boundary box). Process/entity/store expose compass ports `n`, `e`, `s`, `w`; `flow` uses
 //! `a`/`b`.
 
-use drawskill_core::draw::{Painter, ShapeStyle, Stroke, TextStyle};
-use drawskill_core::geom::{Point, Rect, Size};
-use drawskill_core::measure::TextMeasurer;
-use drawskill_core::style::{Style, TextAnchor};
-use drawskill_core::symbols::{
+use diagram_core::draw::{Painter, ShapeStyle, Stroke, TextStyle};
+use diagram_core::geom::{Point, Rect, Size};
+use diagram_core::measure::TextMeasurer;
+use diagram_core::style::{Style, TextAnchor};
+use diagram_core::symbols::{
     Dir, Port, PropKind, PropValue, PropertySpec, Props, Symbol, SymbolPlugin,
 };
 
@@ -80,7 +80,7 @@ fn label_of(props: &Props) -> &str {
 
 fn number_of(props: &Props) -> Option<String> {
     match props.get("number") {
-        Some(PropValue::Number(n)) => Some(drawskill_core::expr::format_num(*n)),
+        Some(PropValue::Number(n)) => Some(diagram_core::expr::format_num(*n)),
         Some(PropValue::Text(s)) if !s.is_empty() => Some(s.clone()),
         _ => None,
     }
@@ -334,10 +334,10 @@ impl Symbol for Flow {
         let tip = Point::new(bounds.right(), cy);
         p.path(
             vec![
-                drawskill_core::draw::PathCmd::MoveTo(tip),
-                drawskill_core::draw::PathCmd::LineTo(Point::new(tip.x - 7.0, cy - 3.5)),
-                drawskill_core::draw::PathCmd::LineTo(Point::new(tip.x - 7.0, cy + 3.5)),
-                drawskill_core::draw::PathCmd::Close,
+                diagram_core::draw::PathCmd::MoveTo(tip),
+                diagram_core::draw::PathCmd::LineTo(Point::new(tip.x - 7.0, cy - 3.5)),
+                diagram_core::draw::PathCmd::LineTo(Point::new(tip.x - 7.0, cy + 3.5)),
+                diagram_core::draw::PathCmd::Close,
             ],
             filled(style),
         );
@@ -414,9 +414,9 @@ impl Symbol for Boundary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use drawskill_core::draw::Primitive;
-    use drawskill_core::measure::BasicMeasurer;
-    use drawskill_core::symbols::Registry;
+    use diagram_core::draw::Primitive;
+    use diagram_core::measure::BasicMeasurer;
+    use diagram_core::symbols::Registry;
 
     fn registry() -> Registry {
         let mut r = Registry::new();

@@ -257,19 +257,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be1e0bca6c3637f992fc1cc7cbc52a78c1ef6db076dbf1059c4323d6a2048376"
 
 [[package]]
-name = "drawskill-cli"
+name = "diagram-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
- "drawskill-core",
- "drawskill-symbols-dataflow",
- "drawskill-symbols-schematic",
- "drawskill-symbols-shapes",
+ "diagram-core",
+ "diagram-symbols-dataflow",
+ "diagram-symbols-schematic",
+ "diagram-symbols-shapes",
  "serde_json",
 ]
 
 [[package]]
-name = "drawskill-core"
+name = "diagram-core"
 version = "0.1.0"
 dependencies = [
  "cosmic-text",
@@ -279,24 +279,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "drawskill-symbols-dataflow"
+name = "diagram-symbols-dataflow"
 version = "0.1.0"
 dependencies = [
- "drawskill-core",
+ "diagram-core",
 ]
 
 [[package]]
-name = "drawskill-symbols-schematic"
+name = "diagram-symbols-schematic"
 version = "0.1.0"
 dependencies = [
- "drawskill-core",
+ "diagram-core",
 ]
 
 [[package]]
-name = "drawskill-symbols-shapes"
+name = "diagram-symbols-shapes"
 version = "0.1.0"
 dependencies = [
- "drawskill-core",
+ "diagram-core",
 ]
 
 [[package]]

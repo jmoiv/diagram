@@ -1,12 +1,12 @@
 [package]
-name = "drawskill-core"
+name = "diagram-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Core engine for drawskill: diagram model, layout, text measurement, and rendering."
+description = "Core engine for diagram: diagram model, layout, text measurement, and rendering."
 
 [dependencies]
 cosmic-text = "0.12.1"

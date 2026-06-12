@@ -1,4 +1,4 @@
-# The drawskill YAML language
+# The diagram YAML language
 
 A document is a YAML mapping with these top-level keys:
 
@@ -99,7 +99,7 @@ vbox:                  # equivalent map form
 ```yaml
 symbol: schematic.resistor   # "plugin.name"
 id: R1
-props:                       # symbol-specific (see `drawskill symbols describe`)
+props:                       # symbol-specific (see `diagram symbols describe`)
   ohms: "1k"
 ```
 
