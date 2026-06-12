@@ -1,0 +1,16 @@
+[package]
+name = "drawskill-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Core engine for drawskill: diagram model, layout, text measurement, and rendering."
+
+[dependencies]
+cosmic-text = "0.12.1"
+resvg = "0.45.1"
+svg2pdf = "0.13.0"
+
+[dev-dependencies]

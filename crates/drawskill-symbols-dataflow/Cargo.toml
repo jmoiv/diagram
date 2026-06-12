@@ -1,0 +1,12 @@
+[package]
+name = "drawskill-symbols-dataflow"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Data-flow diagram (DFD) symbol plugin for drawskill."
+
+[dependencies]
+drawskill-core.workspace = true

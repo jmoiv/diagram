@@ -1,0 +1,18 @@
+[package]
+name = "drawskill-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Command-line interface for drawskill."
+
+[[bin]]
+name = "drawskill"
+path = "src/main.rs"
+
+[dependencies]
+drawskill-core.workspace = true
+drawskill-symbols-schematic.workspace = true
+drawskill-symbols-dataflow.workspace = true

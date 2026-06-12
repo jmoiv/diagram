@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/drawskill-core",
+    "crates/drawskill-cli",
+    "crates/drawskill-symbols-schematic",
+    "crates/drawskill-symbols-dataflow",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.74"
+license = "Apache-2.0"
+repository = "https://github.com/jonorato/drawskill"
+authors = ["drawskill contributors"]
+
+[workspace.dependencies]
+drawskill-core = { path = "crates/drawskill-core" }
+drawskill-symbols-schematic = { path = "crates/drawskill-symbols-schematic" }
+drawskill-symbols-dataflow = { path = "crates/drawskill-symbols-dataflow" }
+
+[profile.release]
+# Diagrams are small; favor a smaller, reasonably fast binary.
+opt-level = 2
