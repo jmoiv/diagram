@@ -11,6 +11,7 @@ description = "Core engine for drawskill: diagram model, layout, text measuremen
 [dependencies]
 cosmic-text = "0.12.1"
 resvg = "0.45.1"
+saphyr = "0.0.6"
 svg2pdf = "0.13.0"
 
 [dev-dependencies]
