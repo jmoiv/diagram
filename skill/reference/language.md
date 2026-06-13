@@ -136,23 +136,36 @@ connect:
     to: C1.a
     arrow: end           # none | end | both   (default end)
     routing: orthogonal  # straight | orthogonal
+    ortho_style: auto    # auto | hvh | vhv  (default auto; see below)
+    spread: true         # false = opt this net out of parallel-spread grouping
     label: "signal"      # optional, drawn at the midpoint
     stroke: "#333"       # style overrides allowed
 ```
 
 ### Orthogonal routing and parallel lines
 
-Orthogonal routing draws Z-shaped paths: horizontal from the source port to a **shift point**
-at the horizontal midpoint between the two nodes, then vertical, then horizontal to the
-destination.
+Orthogonal routing draws Z-shaped right-angle paths with an elbow segment at the midpoint.
+Two shapes are used:
 
-When multiple connections share the same source column and destination column their natural
-shift points would coincide, producing overlapping lines. The engine detects this automatically
-and fans the shift points apart by **8 px × rank** (centered on the natural midpoint), so
-parallel lines are visibly separated without any extra configuration.
+- **H-V-H** (default for horizontal ports): horizontal → vertical → horizontal; elbows at
+  the sides. Used automatically when neither endpoint port faces Up or Down.
+- **V-H-V** (default for vertical ports): vertical → horizontal → vertical; elbows at
+  the top/bottom. Used automatically when both endpoint ports face Up or Down (e.g. MCU
+  bottom pins connecting to a chip's top pins).
 
-**Leave room.** The fan works best when there is enough horizontal space between nodes that
-`n × 8 px` of spread fits comfortably in the corridor. Six parallel lines need roughly 50 px
-of clearance. Use `col_gap`, `margin`, or a fixed canvas `width` to provide it. The router
-does not detect collisions with node bodies, so avoid placing unrelated nodes inside the spread
-corridor — leave it clear.
+Override the auto choice with `ortho_style: hvh` or `ortho_style: vhv`.
+
+**Parallel-line spread.** When multiple connections share the same source and destination
+columns their natural shift points would coincide, producing overlapping lines. The engine
+detects this automatically and fans the shift points apart by **8 px × rank** (centered on
+the natural midpoint) with the fan direction chosen to avoid crossings. No configuration
+needed — parallel lines are visibly separated by default.
+
+Set `spread: false` on a connection to opt it out of the spread computation. That net renders
+at the natural shift midpoint (offset 0); the remaining nets in the same column still fan
+among themselves.
+
+**Leave room.** The fan works best when there is enough space between nodes that `n × 8 px`
+of spread fits comfortably. Six parallel lines need roughly 50 px of clearance. Use `margin`
+or a fixed canvas `width` to provide it. The router does not detect collisions with node
+bodies — avoid placing unrelated nodes inside the spread corridor.

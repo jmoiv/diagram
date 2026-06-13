@@ -226,6 +226,18 @@ pub enum Routing {
     Orthogonal,
 }
 
+/// Explicit shape for an orthogonal connection's route. Overrides auto-detection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum OrthoStyle {
+    /// Choose automatically: V-H-V when both endpoint ports face Up/Down, else H-V-H.
+    #[default]
+    Auto,
+    /// Force horizontal → vertical → horizontal (elbows at the sides).
+    Hvh,
+    /// Force vertical → horizontal → vertical (elbows at the top/bottom).
+    Vhv,
+}
+
 /// Which endpoints get arrowheads.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Arrow {
@@ -252,6 +264,11 @@ pub struct Connect {
     pub arrow: Arrow,
     /// Optional label drawn at the midpoint.
     pub label: Option<String>,
+    /// When `false`, exclude from the parallel-spread group; render at the natural shift
+    /// midpoint (offset 0). Default `true`.
+    pub spread: bool,
+    /// Override the auto-detected route shape for orthogonal connections.
+    pub ortho_style: OrthoStyle,
 }
 
 #[cfg(test)]

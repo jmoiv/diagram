@@ -571,6 +571,12 @@ fn parse_connect(yv: &Yv) -> Result<Connect> {
         Some(s) if s.eq_ignore_ascii_case("orthogonal") => Routing::Orthogonal,
         _ => Routing::Straight,
     };
+    let ortho_style = match yv.get("ortho_style").and_then(Yv::as_str) {
+        Some(s) if s.eq_ignore_ascii_case("hvh") => OrthoStyle::Hvh,
+        Some(s) if s.eq_ignore_ascii_case("vhv") => OrthoStyle::Vhv,
+        _ => OrthoStyle::Auto,
+    };
+    let spread = !matches!(yv.get("spread"), Some(Yv::Bool(false)));
     let arrow = match yv.get("arrow").and_then(Yv::as_str) {
         Some(s) if s.eq_ignore_ascii_case("none") => Arrow::None,
         Some(s) if s.eq_ignore_ascii_case("both") => Arrow::Both,
@@ -583,6 +589,8 @@ fn parse_connect(yv: &Yv) -> Result<Connect> {
         to,
         style,
         routing,
+        ortho_style,
+        spread,
         arrow,
         label,
     })

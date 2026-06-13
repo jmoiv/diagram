@@ -22,7 +22,11 @@ render it to **PNG**, **SVG**, or **PDF**.
    diagram render diagram.yaml -o diagram.png        # or .svg / .pdf
    diagram render diagram.yaml -o out.png --scale 2  # higher-res PNG
    ```
-4. **Look at the result** (open/inspect the PNG) and iterate.
+4. **Inspect the result carefully** — always open and read the rendered PNG before reporting
+   success. Look for: overlapping labels or shapes, crossing wires that shouldn't cross,
+   unclear connections, cramped spacing, and anything that would confuse a reader. These
+   problems are invisible in the YAML but obvious in the image. Iterate until the diagram is
+   clean and unambiguous.
 
 ## Authoring rules — follow these
 

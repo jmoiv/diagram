@@ -16,7 +16,8 @@ use crate::error::{Error, Result};
 use crate::geom::{Point, Rect, Size};
 use crate::measure::TextMeasurer;
 use crate::model::{
-    Align, Arrow, Connect, Direction, Document, Justify, Node, NodeKind, PortRef, Routing, SizeSpec,
+    Align, Arrow, Connect, Direction, Document, Justify, Node, NodeKind, OrthoStyle, PortRef,
+    Routing, SizeSpec,
 };
 use crate::style::{Color, Style};
 use crate::symbols::{Dir, Port, Props, Registry, Symbol};
@@ -682,39 +683,38 @@ fn is_vertical_port(dir: Option<Dir>) -> bool {
 struct OrthoInfo {
     p1: Point,
     p2: Point,
-    /// `true` when both ports are vertical (Up/Down) → use V-H-V routing.
+    /// `true` when the connection uses V-H-V routing (elbows at top/bottom).
     vertical: bool,
 }
 
-/// Pre-compute per-connection offsets so parallel orthogonal connections
-/// are fanned apart rather than overlapping.
-///
-/// H-V-H connections (both ports horizontal) are grouped by their natural `midx` and
-/// spread in x.  V-H-V connections (both ports vertical) are grouped by their natural
-/// `midy` and spread in y.
-///
-/// Within each group the offset direction is chosen to avoid the crossing that would
-/// otherwise occur: for H-V-H connections going *downward* the fan is reversed
-/// (topmost source gets the rightmost/largest shift), and for V-H-V connections the
-/// fan is reversed when dx and dy have the same sign.
-///
-/// Returns a `Vec` aligned with `connections`; non-orthogonal entries are `0.0`.
-fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>) -> Vec<f64> {
-    // Resolve ports once per connection.
-    let data: Vec<Option<OrthoInfo>> = connections
-        .iter()
-        .map(|c| {
-            if c.routing != Routing::Orthogonal {
-                return None;
-            }
-            let (p1, d1) = resolve_port(&c.from, nodes).ok()?;
-            let (p2, d2) = resolve_port(&c.to, nodes).ok()?;
-            let vertical = is_vertical_port(d1) && is_vertical_port(d2);
-            Some(OrthoInfo { p1, p2, vertical })
-        })
-        .collect();
+/// Compute the 4-point path for a single orthogonal connection.
+/// Pure geometry; no node maps required. Used directly and in tests via `route_parallel`.
+fn ortho_route(
+    p1: Point,
+    d1: Option<Dir>,
+    p2: Point,
+    d2: Option<Dir>,
+    offset: f64,
+    style: OrthoStyle,
+) -> Vec<Point> {
+    let use_vhv = match style {
+        OrthoStyle::Auto => is_vertical_port(d1) && is_vertical_port(d2),
+        OrthoStyle::Hvh => false,
+        OrthoStyle::Vhv => true,
+    };
+    if use_vhv {
+        let midy = (p1.y + p2.y) / 2.0 + offset;
+        vec![p1, Point::new(p1.x, midy), Point::new(p2.x, midy), p2]
+    } else {
+        let midx = (p1.x + p2.x) / 2.0 + offset;
+        vec![p1, Point::new(midx, p1.y), Point::new(midx, p2.y), p2]
+    }
+}
 
-    // Bucket connections into H groups (by midx) and V groups (by midy).
+/// Pure offset computation: group connections by shift-point bucket and fan them apart.
+/// `data[i]` is `None` for non-orthogonal, `spread: false`, or unresolvable connections;
+/// those entries receive offset 0.0 and are excluded from all groups.
+fn compute_offsets(data: &[Option<OrthoInfo>]) -> Vec<f64> {
     let mut h_groups: HashMap<i64, Vec<usize>> = HashMap::new();
     let mut v_groups: HashMap<i64, Vec<usize>> = HashMap::new();
     for (i, d) in data.iter().enumerate() {
@@ -729,9 +729,10 @@ fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>)
         }
     }
 
-    let mut offsets = vec![0.0f64; connections.len()];
+    let mut offsets = vec![0.0f64; data.len()];
 
-    // H groups: sort by source y, spread midx; reverse fan when going downward.
+    // H groups: sort by source y, spread midx.
+    // Same rule as V groups: reverse fan when dx and dy have the same sign.
     for indices in h_groups.values() {
         if indices.len() < 2 {
             continue;
@@ -749,10 +750,18 @@ fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>)
             .map(|d| d.p2.y - d.p1.y)
             .sum::<f64>()
             / n;
+        let mean_dx: f64 = sorted
+            .iter()
+            .filter_map(|&i| data[i].as_ref())
+            .map(|d| d.p2.x - d.p1.x)
+            .sum::<f64>()
+            / n;
         for (rank, &idx) in sorted.iter().enumerate() {
             let base = (rank as f64 - (n - 1.0) / 2.0) * ORTHO_SEP;
-            // Going down: top source must get the rightmost shift to avoid crossings.
-            offsets[idx] = if mean_dy > 0.0 { -base } else { base };
+            // Same-sign dx/dy: topmost source needs the rightmost shift (right-going)
+            // or leftmost shift (left-going) to avoid the first horizontal crossing a
+            // lower connection's vertical segment.
+            offsets[idx] = if mean_dy * mean_dx > 0.0 { -base } else { base };
         }
     }
 
@@ -790,6 +799,28 @@ fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>)
     offsets
 }
 
+/// Pre-compute per-connection offsets so parallel orthogonal connections are fanned apart.
+/// Connections with `spread: false` are excluded from groups and receive offset 0.0.
+fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>) -> Vec<f64> {
+    let data: Vec<Option<OrthoInfo>> = connections
+        .iter()
+        .map(|c| {
+            if c.routing != Routing::Orthogonal || !c.spread {
+                return None;
+            }
+            let (p1, d1) = resolve_port(&c.from, nodes).ok()?;
+            let (p2, d2) = resolve_port(&c.to, nodes).ok()?;
+            let vertical = match c.ortho_style {
+                OrthoStyle::Auto => is_vertical_port(d1) && is_vertical_port(d2),
+                OrthoStyle::Hvh => false,
+                OrthoStyle::Vhv => true,
+            };
+            Some(OrthoInfo { p1, p2, vertical })
+        })
+        .collect();
+    compute_offsets(&data)
+}
+
 fn draw_connection(
     c: &Connect,
     nodes: &HashMap<String, ResolvedNode>,
@@ -804,17 +835,7 @@ fn draw_connection(
 
     let pts: Vec<Point> = match c.routing {
         Routing::Straight => vec![p1, p2],
-        Routing::Orthogonal => {
-            if is_vertical_port(d1) && is_vertical_port(d2) {
-                // V-H-V: both ports face up/down — go vertical first to avoid overlapping
-                // first horizontal segments when multiple connections leave the same face.
-                let midy = (p1.y + p2.y) / 2.0 + offset;
-                vec![p1, Point::new(p1.x, midy), Point::new(p2.x, midy), p2]
-            } else {
-                let midx = (p1.x + p2.x) / 2.0 + offset;
-                vec![p1, Point::new(midx, p1.y), Point::new(midx, p2.y), p2]
-            }
-        }
+        Routing::Orthogonal => ortho_route(p1, d1, p2, d2, offset, c.ortho_style),
     };
 
     prims.push(Primitive::Polyline {
@@ -1106,6 +1127,8 @@ mod tests {
             routing: Routing::Straight,
             arrow: Arrow::End,
             label: Some("x".into()),
+            spread: true,
+            ortho_style: OrthoStyle::Auto,
         });
         let _ = Color::BLACK; // keep import used
         let scene = layout_document(&document, &registry(), &BasicMeasurer::default()).unwrap();
@@ -1141,8 +1164,402 @@ mod tests {
             routing: Routing::Straight,
             arrow: Arrow::None,
             label: None,
+            spread: true,
+            ortho_style: OrthoStyle::Auto,
         });
         let err = layout_document(&document, &registry(), &BasicMeasurer::default()).unwrap_err();
         assert!(matches!(err, Error::UnknownPort(_)));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Orthogonal router geometry tests
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /// Route a batch of orthogonal connections from raw endpoint geometry, without
+    /// a full document. Useful for testing the pure routing math in isolation.
+    fn route_parallel_auto(
+        endpoints: &[(Point, Option<Dir>, Point, Option<Dir>)],
+    ) -> Vec<Vec<Point>> {
+        let data: Vec<Option<OrthoInfo>> = endpoints
+            .iter()
+            .map(|&(p1, d1, p2, d2)| {
+                Some(OrthoInfo {
+                    p1,
+                    p2,
+                    vertical: is_vertical_port(d1) && is_vertical_port(d2),
+                })
+            })
+            .collect();
+        let offsets = compute_offsets(&data);
+        endpoints
+            .iter()
+            .zip(offsets.iter())
+            .map(|(&(p1, d1, p2, d2), &offset)| {
+                ortho_route(p1, d1, p2, d2, offset, OrthoStyle::Auto)
+            })
+            .collect()
+    }
+
+    fn cross2d(o: Point, a: Point, b: Point) -> f64 {
+        (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
+    }
+
+    fn segments_cross(a1: Point, a2: Point, b1: Point, b2: Point) -> bool {
+        let d1 = cross2d(b1, b2, a1);
+        let d2 = cross2d(b1, b2, a2);
+        let d3 = cross2d(a1, a2, b1);
+        let d4 = cross2d(a1, a2, b2);
+        ((d1 > 0.0 && d2 < 0.0) || (d1 < 0.0 && d2 > 0.0))
+            && ((d3 > 0.0 && d4 < 0.0) || (d3 < 0.0 && d4 > 0.0))
+    }
+
+    fn no_pairwise_crossing(paths: &[Vec<Point>]) -> bool {
+        for i in 0..paths.len() {
+            for j in (i + 1)..paths.len() {
+                let a = &paths[i];
+                let b = &paths[j];
+                for s in 0..a.len().saturating_sub(1) {
+                    for t in 0..b.len().saturating_sub(1) {
+                        if segments_cross(a[s], a[s + 1], b[t], b[t + 1]) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn crossing_checker_detects_bug() {
+        // Verify the checker catches the wrong fan direction (sanity check for the checker).
+        // RIGHT-DOWN without reversal: topmost source gets leftmost shift — that's wrong.
+        let p_top = vec![
+            Point::new(0.0, 0.0),
+            Point::new(142.0, 0.0),
+            Point::new(142.0, 200.0),
+            Point::new(300.0, 200.0),
+        ];
+        let p_bot = vec![
+            Point::new(0.0, 100.0),
+            Point::new(158.0, 100.0),
+            Point::new(158.0, 300.0),
+            Point::new(300.0, 300.0),
+        ];
+        assert!(
+            !no_pairwise_crossing(&[p_top, p_bot]),
+            "checker must detect crossing in deliberately buggy paths"
+        );
+    }
+
+    #[test]
+    fn hvh_right_down_no_crossing() {
+        // Three H-V-H connections going right (+x) and down (+y).
+        // mean_dy > 0 → fan is reversed so the topmost source gets the rightmost shift.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(0.0, 0.0),
+                Some(Dir::Right),
+                Point::new(300.0, 200.0),
+                Some(Dir::Left),
+            ),
+            (
+                Point::new(0.0, 50.0),
+                Some(Dir::Right),
+                Point::new(300.0, 250.0),
+                Some(Dir::Left),
+            ),
+            (
+                Point::new(0.0, 100.0),
+                Some(Dir::Right),
+                Point::new(300.0, 300.0),
+                Some(Dir::Left),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "right-down H-V-H paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn hvh_right_up_no_crossing() {
+        // Three H-V-H connections going right (+x) and up (-y).
+        // mean_dy < 0 → fan is not reversed.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(0.0, 300.0),
+                Some(Dir::Right),
+                Point::new(300.0, 100.0),
+                Some(Dir::Left),
+            ),
+            (
+                Point::new(0.0, 350.0),
+                Some(Dir::Right),
+                Point::new(300.0, 150.0),
+                Some(Dir::Left),
+            ),
+            (
+                Point::new(0.0, 400.0),
+                Some(Dir::Right),
+                Point::new(300.0, 200.0),
+                Some(Dir::Left),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "right-up H-V-H paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn hvh_left_down_no_crossing() {
+        // Three H-V-H connections going left (-x) and down (+y).
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(300.0, 0.0),
+                Some(Dir::Left),
+                Point::new(0.0, 200.0),
+                Some(Dir::Right),
+            ),
+            (
+                Point::new(300.0, 50.0),
+                Some(Dir::Left),
+                Point::new(0.0, 250.0),
+                Some(Dir::Right),
+            ),
+            (
+                Point::new(300.0, 100.0),
+                Some(Dir::Left),
+                Point::new(0.0, 300.0),
+                Some(Dir::Right),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "left-down H-V-H paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn hvh_left_up_no_crossing() {
+        // Three H-V-H connections going left (-x) and up (-y).
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(300.0, 300.0),
+                Some(Dir::Left),
+                Point::new(0.0, 100.0),
+                Some(Dir::Right),
+            ),
+            (
+                Point::new(300.0, 350.0),
+                Some(Dir::Left),
+                Point::new(0.0, 150.0),
+                Some(Dir::Right),
+            ),
+            (
+                Point::new(300.0, 400.0),
+                Some(Dir::Left),
+                Point::new(0.0, 200.0),
+                Some(Dir::Right),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "left-up H-V-H paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn vhv_down_left_no_crossing() {
+        // Three V-H-V connections going down (+y) and left (-x).
+        // mean_dx * mean_dy < 0 → no fan reversal.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(200.0, 0.0),
+                Some(Dir::Down),
+                Point::new(0.0, 300.0),
+                Some(Dir::Up),
+            ),
+            (
+                Point::new(250.0, 0.0),
+                Some(Dir::Down),
+                Point::new(50.0, 300.0),
+                Some(Dir::Up),
+            ),
+            (
+                Point::new(300.0, 0.0),
+                Some(Dir::Down),
+                Point::new(100.0, 300.0),
+                Some(Dir::Up),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "down-left V-H-V paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn vhv_down_right_no_crossing() {
+        // Three V-H-V connections going down (+y) and right (+x).
+        // mean_dx * mean_dy > 0 → fan reversed.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(0.0, 0.0),
+                Some(Dir::Down),
+                Point::new(200.0, 300.0),
+                Some(Dir::Up),
+            ),
+            (
+                Point::new(50.0, 0.0),
+                Some(Dir::Down),
+                Point::new(250.0, 300.0),
+                Some(Dir::Up),
+            ),
+            (
+                Point::new(100.0, 0.0),
+                Some(Dir::Down),
+                Point::new(300.0, 300.0),
+                Some(Dir::Up),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "down-right V-H-V paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn vhv_up_right_no_crossing() {
+        // Three V-H-V connections going up (-y) and right (+x).
+        // mean_dx * mean_dy < 0 → no fan reversal.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(0.0, 300.0),
+                Some(Dir::Up),
+                Point::new(200.0, 0.0),
+                Some(Dir::Down),
+            ),
+            (
+                Point::new(50.0, 300.0),
+                Some(Dir::Up),
+                Point::new(250.0, 0.0),
+                Some(Dir::Down),
+            ),
+            (
+                Point::new(100.0, 300.0),
+                Some(Dir::Up),
+                Point::new(300.0, 0.0),
+                Some(Dir::Down),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "up-right V-H-V paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn vhv_up_left_no_crossing() {
+        // Three V-H-V connections going up (-y) and left (-x).
+        // mean_dx * mean_dy > 0 → fan reversed.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(200.0, 300.0),
+                Some(Dir::Up),
+                Point::new(0.0, 0.0),
+                Some(Dir::Down),
+            ),
+            (
+                Point::new(250.0, 300.0),
+                Some(Dir::Up),
+                Point::new(50.0, 0.0),
+                Some(Dir::Down),
+            ),
+            (
+                Point::new(300.0, 300.0),
+                Some(Dir::Up),
+                Point::new(100.0, 0.0),
+                Some(Dir::Down),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "up-left V-H-V paths cross: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn two_connection_hvh_group_no_crossing() {
+        // Minimal group: exactly 2 connections.
+        let paths = route_parallel_auto(&[
+            (
+                Point::new(0.0, 0.0),
+                Some(Dir::Right),
+                Point::new(300.0, 150.0),
+                Some(Dir::Left),
+            ),
+            (
+                Point::new(0.0, 80.0),
+                Some(Dir::Right),
+                Point::new(300.0, 200.0),
+                Some(Dir::Left),
+            ),
+        ]);
+        assert!(
+            no_pairwise_crossing(&paths),
+            "2-connection H-V-H group crosses: {paths:?}"
+        );
+    }
+
+    #[test]
+    fn solo_connection_has_zero_offset() {
+        // A lone connection is not in a group → offset must be 0 (natural midpoint).
+        let path = &route_parallel_auto(&[(
+            Point::new(0.0, 0.0),
+            Some(Dir::Right),
+            Point::new(200.0, 100.0),
+            Some(Dir::Left),
+        )])[0];
+        assert!(
+            (path[1].x - 100.0).abs() < 1e-9,
+            "solo connection should have midx=100 (no offset), got {:?}",
+            path[1]
+        );
+    }
+
+    #[test]
+    fn explicit_ortho_style_overrides_port_direction() {
+        // Force HVH even when both ports are vertical.
+        let path_hvh = &ortho_route(
+            Point::new(0.0, 0.0),
+            Some(Dir::Down),
+            Point::new(100.0, 200.0),
+            Some(Dir::Up),
+            0.0,
+            OrthoStyle::Hvh,
+        );
+        // HVH: second point should share y with p1 (first horizontal segment).
+        assert!(
+            (path_hvh[1].y - 0.0).abs() < 1e-9,
+            "Hvh override: expected first elbow at y=0, got {:?}",
+            path_hvh[1]
+        );
+        // Force VHV even when both ports are horizontal.
+        let path_vhv = &ortho_route(
+            Point::new(0.0, 0.0),
+            Some(Dir::Right),
+            Point::new(100.0, 200.0),
+            Some(Dir::Left),
+            0.0,
+            OrthoStyle::Vhv,
+        );
+        // VHV: second point should share x with p1 (first vertical segment).
+        assert!(
+            (path_vhv[1].x - 0.0).abs() < 1e-9,
+            "Vhv override: expected first elbow at x=0, got {:?}",
+            path_vhv[1]
+        );
     }
 }
