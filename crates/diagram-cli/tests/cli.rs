@@ -43,6 +43,7 @@ fn renders_every_example_to_all_formats() {
     for example in [
         "rc_filter",
         "ic_atmega",
+        "orientation",
         "dfd_login",
         "note_card",
         "shapes_flowchart",
@@ -257,6 +258,24 @@ fn symbols_describe_ic_reports_pins() {
     assert!(s.contains("left_pins"));
     assert!(s.contains("right_pins"));
     assert!(s.contains("\"kind\": \"list\""));
+    // Per-side pin spacing.
+    assert!(s.contains("left_spacing"));
+    assert!(s.contains("bottom_spacing"));
+}
+
+#[test]
+fn symbols_describe_reports_orientation() {
+    // Polarized parts expose a 4-way orientation enum...
+    let output = run(&["symbols", "describe", "schematic.diode"]);
+    assert!(output.status.success());
+    let s = String::from_utf8_lossy(&output.stdout);
+    assert!(s.contains("orientation"));
+    assert!(s.contains("enum(right|left|up|down)"));
+
+    // ...while axis-symmetric parts only offer horizontal/vertical.
+    let output = run(&["symbols", "describe", "schematic.resistor"]);
+    let s = String::from_utf8_lossy(&output.stdout);
+    assert!(s.contains("enum(horizontal|vertical)"));
 }
 
 #[test]

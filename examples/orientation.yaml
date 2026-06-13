@@ -1,0 +1,58 @@
+# Symbol orientation and IC pin spacing.
+#
+# Demonstrates: the `orientation` property on schematic parts — axis-symmetric
+# parts (resistor, capacitor, inductor, switch) take `horizontal | vertical`,
+# while polarized / single-terminal parts (diode, vsource, ground) take
+# `right | left | up | down` — plus the IC's per-side `*_spacing` (exact px
+# between adjacent pins).
+
+vars:
+  col_gap: 90      # space between the divider column and the chip
+
+canvas:
+  padding: 20
+  background: white
+
+root:
+  hbox:
+    gap: ${col_gap}
+    align: center
+    children:
+      # A voltage divider stood up vertically: the source, two resistors, and
+      # the ground are all rotated onto the vertical axis.
+      - vbox:
+          gap: 22
+          align: center
+          children:
+            - symbol: schematic.vsource
+              id: V1
+              # `up` puts the + terminal (port a) at the top of the source.
+              props: { volts: 5, orientation: up }
+            - symbol: schematic.resistor
+              id: R1
+              props: { ohms: "10k", orientation: vertical }
+            - symbol: schematic.resistor
+              id: R2
+              props: { ohms: "10k", orientation: vertical }
+            - symbol: schematic.ground
+              id: G1
+              # The lead points up, into the divider above it.
+              props: { orientation: up }
+
+      # The chip: `left_spacing` forces the input pins a wide, even 40px apart so
+      # the divider taps have room to land.
+      - symbol: schematic.ic
+        id: U1
+        props:
+          name: ADC
+          left_pins:  [IN0, IN1]
+          left_spacing: 40
+          right_pins: [SDA, SCL]
+
+connect:
+  # The two divider taps feed the ADC inputs (orthogonal wires).
+  - { from: V1.b, to: R1.a, arrow: none }
+  - { from: R1.b, to: R2.a, arrow: none }
+  - { from: R2.b, to: G1.a, arrow: none }
+  - { from: R1.a, to: U1.IN0, arrow: none, routing: orthogonal }
+  - { from: R1.b, to: U1.IN1, arrow: none, routing: orthogonal }

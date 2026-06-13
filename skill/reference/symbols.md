@@ -15,33 +15,49 @@ whether it's required, its default, and a description.
 
 ### `schematic` — electronic symbols
 
-Two-terminal parts have ports `a` (left) and `b` (right); their value property is drawn as a
-label above the part.
+Two-terminal parts have ports `a` (start) and `b` (end); their value property is drawn as a
+label beside the part.
 
-| Symbol                 | Key property        | Ports            |
-|------------------------|---------------------|------------------|
-| `schematic.resistor`   | `ohms`              | `a`, `b`         |
-| `schematic.capacitor`  | `farads`            | `a`, `b`         |
-| `schematic.inductor`   | `henries`           | `a`, `b`         |
-| `schematic.diode`      | `label`             | `a`, `b`         |
-| `schematic.vsource`    | `volts`             | `a`, `b`         |
-| `schematic.switch`     | `label`             | `a`, `b`         |
-| `schematic.ground`     | —                   | `a` (top)        |
-| `schematic.junction`   | —                   | `c` (center)     |
-| `schematic.ic`         | `name`, `*_pins`    | one per pin name |
+| Symbol                 | Key property        | Ports            | `orientation`              |
+|------------------------|---------------------|------------------|----------------------------|
+| `schematic.resistor`   | `ohms`              | `a`, `b`         | `horizontal` \| `vertical` |
+| `schematic.capacitor`  | `farads`            | `a`, `b`         | `horizontal` \| `vertical` |
+| `schematic.inductor`   | `henries`           | `a`, `b`         | `horizontal` \| `vertical` |
+| `schematic.switch`     | `label`             | `a`, `b`         | `horizontal` \| `vertical` |
+| `schematic.diode`      | `label`             | `a`, `b`         | `right`/`left`/`up`/`down` |
+| `schematic.vsource`    | `volts`             | `a`, `b`         | `right`/`left`/`up`/`down` |
+| `schematic.ground`     | —                   | `a`              | `right`/`left`/`up`/`down` (default `up`) |
+| `schematic.junction`   | —                   | `c` (center)     | — (symmetric)              |
+| `schematic.ic`         | `name`, `*_pins`    | one per pin name | — (symmetric)              |
+
+**Orientation.** Add `orientation:` to stand a part up or flip it. The vocabulary differs by
+symmetry: the axis-symmetric parts (resistor, capacitor, inductor, switch) take `horizontal` or
+`vertical` (default `horizontal`); the polarized / single-terminal parts (diode, vsource,
+ground) take the four facings `right`/`left`/`up`/`down` (default `right`, except ground
+defaults to `up`). For two-terminal parts the facing is the direction from lead `a` to lead `b`.
+
+```yaml
+- symbol: schematic.resistor
+  props: { ohms: "10k", orientation: vertical }
+- symbol: schematic.diode
+  props: { orientation: down }     # anode a on top, cathode b at the bottom
+```
 
 The generic IC takes a `name` and four optional pin lists — `left_pins`, `right_pins`,
 `top_pins`, `bottom_pins` — and auto-sizes to fit the chip name and pin labels. Each pin name
-becomes a port: `connect: [{ from: U1.CLK, to: ... }]`.
+becomes a port: `connect: [{ from: U1.CLK, to: ... }]`. Per-side `*_spacing` properties
+(`left_spacing`, `right_spacing`, `top_spacing`, `bottom_spacing`) spread that side's pins to
+an *exact* center-to-center distance in pixels (default `0` = auto).
 
 ```yaml
 symbol: schematic.ic
 id: U1
 props:
   name: ATmega
-  left_pins:  [VCC, GND, RESET]
-  right_pins: [PB0, PB1, PB2]
-  top_pins:   [XTAL1, XTAL2]
+  left_pins:    [VCC, GND, RESET]
+  left_spacing: 40            # force 40px between the left pins
+  right_pins:   [PB0, PB1, PB2]
+  top_pins:     [XTAL1, XTAL2]
 ```
 
 ### `dataflow` — data-flow diagram (DFD) symbols

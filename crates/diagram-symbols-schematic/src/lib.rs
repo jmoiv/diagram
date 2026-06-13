@@ -2,10 +2,16 @@
 //!
 //! Provides the `schematic` plugin with common two-terminal components (resistor, capacitor,
 //! inductor, diode, voltage source, switch), a ground symbol, a wire junction, and a generic
-//! [`ic`](Ic) with named pins. Two-terminal parts are drawn horizontally with connection
-//! ports `a` (left) and `b` (right); the IC exposes one port per named pin.
+//! [`ic`](Ic) with named pins.
+//!
+//! Most parts accept an `orientation` property so they can be stood up or flipped (see the
+//! crate `README.md` for the full convention): the axis-symmetric two-terminal parts take
+//! `horizontal | vertical`, while the polarized / single-terminal parts (diode, voltage
+//! source, ground) take `right | left | up | down`. `junction` and `ic` are symmetric in all
+//! dimensions and have no orientation; the IC instead exposes per-side pin-`*_spacing` props.
+//! Two-terminal parts expose ports `a` (start) and `b` (end); the IC exposes one port per pin.
 
-use diagram_core::draw::{Painter, PathCmd, ShapeStyle, Stroke};
+use diagram_core::draw::{Painter, PathCmd, ShapeStyle, Stroke, TextStyle};
 use diagram_core::geom::{Point, Rect, Size};
 use diagram_core::measure::TextMeasurer;
 use diagram_core::style::{Style, TextAnchor};
@@ -41,6 +47,73 @@ impl SymbolPlugin for Schematic {
 }
 
 // ---------------------------------------------------------------------------
+// Orientation
+// ---------------------------------------------------------------------------
+
+/// Which way a part faces. For two-terminal parts this is the direction of travel from the
+/// start lead (`a`) to the end lead (`b`); `Right` is the natural, unrotated layout.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Facing {
+    Right,
+    Left,
+    Up,
+    Down,
+}
+
+impl Facing {
+    fn is_horizontal(self) -> bool {
+        matches!(self, Facing::Right | Facing::Left)
+    }
+
+    /// Port directions for the start (`a`) and end (`b`) leads given this facing.
+    fn port_dirs(self) -> (Dir, Dir) {
+        match self {
+            Facing::Right => (Dir::Left, Dir::Right),
+            Facing::Left => (Dir::Right, Dir::Left),
+            Facing::Down => (Dir::Up, Dir::Down),
+            Facing::Up => (Dir::Down, Dir::Up),
+        }
+    }
+}
+
+/// `orientation` for axis-symmetric parts (`horizontal | vertical`, default horizontal).
+fn axis_facing(props: &Props) -> Facing {
+    match props.text_or("orientation", "horizontal") {
+        "vertical" => Facing::Down,
+        _ => Facing::Right,
+    }
+}
+
+/// `orientation` for polarized parts (`right | left | up | down`).
+fn dir_facing(props: &Props, default: Facing) -> Facing {
+    match props.text_or("orientation", "") {
+        "left" => Facing::Left,
+        "up" => Facing::Up,
+        "down" => Facing::Down,
+        "right" => Facing::Right,
+        _ => default,
+    }
+}
+
+fn axis_orientation_prop() -> PropertySpec {
+    PropertySpec::optional(
+        "orientation",
+        PropKind::Enum(&["horizontal", "vertical"]),
+        PropValue::text("horizontal"),
+        "Layout axis: `horizontal` (default) or `vertical`.",
+    )
+}
+
+fn dir_orientation_prop(default: &'static str) -> PropertySpec {
+    PropertySpec::optional(
+        "orientation",
+        PropKind::Enum(&["right", "left", "up", "down"]),
+        PropValue::text(default),
+        "Facing direction: right/left/up/down.",
+    )
+}
+
+// ---------------------------------------------------------------------------
 // Shared geometry / helpers for two-terminal components
 // ---------------------------------------------------------------------------
 
@@ -48,6 +121,8 @@ const LEAD: f64 = 10.0;
 const BODY_H: f64 = 24.0;
 const LABEL_H: f64 = 14.0;
 const DEFAULT_W: f64 = 64.0;
+/// Width of the label strip placed beside a *vertical* part (horizontal parts use `LABEL_H`).
+const VLABEL_W: f64 = 38.0;
 
 fn stroke(style: &Style) -> Stroke {
     Stroke::new(style.stroke, style.stroke_width.max(1.0))
@@ -61,7 +136,7 @@ fn filled(style: &Style) -> ShapeStyle {
     ShapeStyle::new(style.stroke, style.stroke, style.stroke_width.max(1.0))
 }
 
-/// Whether a two-terminal component has a value/label to display above it.
+/// Whether a two-terminal component has a value/label to display.
 fn value_label(props: &Props, key: &str, unit: &str) -> Option<String> {
     let explicit = props.text_or("label", "");
     if !explicit.is_empty() {
@@ -76,56 +151,116 @@ fn value_label(props: &Props, key: &str, unit: &str) -> Option<String> {
     }
 }
 
-/// Default intrinsic size of a two-terminal component, given whether it shows a label.
-fn tt_size(has_label: bool) -> Size {
-    Size::new(DEFAULT_W, BODY_H + if has_label { LABEL_H } else { 0.0 })
+/// Reserved label strip on the *cross* axis: `LABEL_H` above a horizontal part, `VLABEL_W`
+/// beside a vertical one, or nothing when there is no label.
+fn label_strip(facing: Facing, has_label: bool) -> f64 {
+    if !has_label {
+        0.0
+    } else if facing.is_horizontal() {
+        LABEL_H
+    } else {
+        VLABEL_W
+    }
 }
 
-/// The vertical centerline (lead height) for a two-terminal component within `bounds`.
-fn tt_centerline(bounds: Rect, has_label: bool) -> f64 {
-    let label_area = if has_label { LABEL_H } else { 0.0 };
-    bounds.y + label_area + (bounds.height - label_area) / 2.0
+/// Geometry context for a two-terminal part. Coordinates are expressed in the part's *natural
+/// frame*: `a` runs along the lead-to-lead (long) axis from the start lead, `c` runs across
+/// the short axis. [`Tt::at`] maps such a natural point into absolute canvas coordinates for
+/// the requested [`Facing`], so each symbol's drawing is written once (as if horizontal).
+struct Tt {
+    facing: Facing,
+    bounds: Rect,
+    /// Lead-to-lead extent.
+    long: f64,
+    /// Cross-axis position of the centerline (where the leads/body sit).
+    cc: f64,
+    /// Reserved label strip on the cross axis.
+    strip: f64,
 }
 
-fn tt_ports(bounds: Rect, has_label: bool) -> Vec<Port> {
-    let cy = tt_centerline(bounds, has_label);
-    vec![
-        Port::new("a", Point::new(bounds.x, cy), Dir::Left),
-        Port::new("b", Point::new(bounds.right(), cy), Dir::Right),
-    ]
+impl Tt {
+    fn new(bounds: Rect, facing: Facing, strip: f64) -> Self {
+        let (long, short) = if facing.is_horizontal() {
+            (bounds.width, bounds.height)
+        } else {
+            (bounds.height, bounds.width)
+        };
+        let cc = strip + (short - strip) / 2.0;
+        Self {
+            facing,
+            bounds,
+            long,
+            cc,
+            strip,
+        }
+    }
+
+    /// Map a natural-frame offset to absolute coordinates.
+    fn at(&self, a: f64, c: f64) -> Point {
+        let b = self.bounds;
+        match self.facing {
+            Facing::Right => Point::new(b.x + a, b.y + c),
+            Facing::Left => Point::new(b.right() - a, b.y + c),
+            Facing::Down => Point::new(b.x + c, b.y + a),
+            Facing::Up => Point::new(b.x + c, b.bottom() - a),
+        }
+    }
+
+    /// The body extent along the long axis (inset from the leads).
+    fn body(&self) -> (f64, f64) {
+        (LEAD, self.long - LEAD)
+    }
+
+    fn ports(&self) -> Vec<Port> {
+        let (start, end) = self.facing.port_dirs();
+        vec![
+            Port::new("a", self.at(0.0, self.cc), start),
+            Port::new("b", self.at(self.long, self.cc), end),
+        ]
+    }
+
+    /// Draw the lead wires from the bounds ends to the body extents `[b0, b1]`.
+    fn leads(&self, p: &mut Painter, b0: f64, b1: f64, style: &Style) {
+        p.line(self.at(0.0, self.cc), self.at(b0, self.cc), stroke(style));
+        p.line(
+            self.at(b1, self.cc),
+            self.at(self.long, self.cc),
+            stroke(style),
+        );
+    }
+
+    /// Draw the value label in its reserved strip (centered over a horizontal part, beside a
+    /// vertical one).
+    fn label(&self, p: &mut Painter, text: &str, style: &Style) {
+        let pos = if self.facing.is_horizontal() {
+            self.at(self.long / 2.0, self.strip - 3.0)
+        } else {
+            // Vertically centered text reads nicest nudged down by ~half its cap height.
+            self.at(self.long / 2.0, self.strip / 2.0)
+                .translate(0.0, 4.0)
+        };
+        p.text(
+            pos,
+            text,
+            TextStyle {
+                color: style.text_color,
+                font_family: style.font_family.clone(),
+                font_size: style.font_size.min(LABEL_H),
+                anchor: TextAnchor::Middle,
+            },
+        );
+    }
 }
 
-/// Draw the lead wires from the bounds edges to the body's left/right extents at `cy`.
-fn draw_leads(p: &mut Painter, bounds: Rect, body_l: f64, body_r: f64, cy: f64, style: &Style) {
-    p.line(
-        Point::new(bounds.x, cy),
-        Point::new(body_l, cy),
-        stroke(style),
-    );
-    p.line(
-        Point::new(body_r, cy),
-        Point::new(bounds.right(), cy),
-        stroke(style),
-    );
-}
-
-/// Draw a centered label across the top of the component (if present).
-fn draw_label(p: &mut Painter, bounds: Rect, text: &str, style: &Style) {
-    p.text(
-        Point::new(bounds.center().x, bounds.y + LABEL_H - 3.0),
-        text,
-        diagram_core::draw::TextStyle {
-            color: style.text_color,
-            font_family: style.font_family.clone(),
-            font_size: style.font_size.min(LABEL_H),
-            anchor: TextAnchor::Middle,
-        },
-    );
-}
-
-/// The horizontal body extent (inset from the leads) for a two-terminal component.
-fn body_extent(bounds: Rect) -> (f64, f64) {
-    (bounds.x + LEAD, bounds.right() - LEAD)
+/// Intrinsic size of a two-terminal part: `long` along its axis, `body_short` across, plus the
+/// label strip, swapped for vertical orientation.
+fn tt_size(facing: Facing, has_label: bool, long: f64, body_short: f64) -> Size {
+    let short = body_short + label_strip(facing, has_label);
+    if facing.is_horizontal() {
+        Size::new(long, short)
+    } else {
+        Size::new(short, long)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -155,13 +290,17 @@ impl Symbol for Resistor {
                 PropValue::text(""),
                 "Override label text (used instead of ohms).",
             ),
+            axis_orientation_prop(),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
-        tt_size(value_label(props, "ohms", "\u{2126}").is_some())
+        let has = value_label(props, "ohms", "\u{2126}").is_some();
+        tt_size(axis_facing(props), has, DEFAULT_W, BODY_H)
     }
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
-        tt_ports(bounds, value_label(props, "ohms", "\u{2126}").is_some())
+        let facing = axis_facing(props);
+        let has = value_label(props, "ohms", "\u{2126}").is_some();
+        Tt::new(bounds, facing, label_strip(facing, has)).ports()
     }
     fn draw(
         &self,
@@ -171,23 +310,28 @@ impl Symbol for Resistor {
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
+        let facing = axis_facing(props);
         let label = value_label(props, "ohms", "\u{2126}");
-        let cy = tt_centerline(bounds, label.is_some());
-        let (bl, br) = body_extent(bounds);
-        draw_leads(p, bounds, bl, br, cy, style);
+        let ctx = Tt::new(bounds, facing, label_strip(facing, label.is_some()));
+        let (bl, br) = ctx.body();
+        ctx.leads(p, bl, br, style);
         // Zig-zag across [bl, br].
         let segments = 6;
         let amp = 8.0;
-        let mut pts = vec![Point::new(bl, cy)];
+        let mut pts = vec![ctx.at(bl, ctx.cc)];
         for i in 0..segments {
-            let x = bl + (br - bl) * (i as f64 + 0.5) / segments as f64;
-            let y = if i % 2 == 0 { cy - amp } else { cy + amp };
-            pts.push(Point::new(x, y));
+            let a = bl + (br - bl) * (i as f64 + 0.5) / segments as f64;
+            let c = if i % 2 == 0 {
+                ctx.cc - amp
+            } else {
+                ctx.cc + amp
+            };
+            pts.push(ctx.at(a, c));
         }
-        pts.push(Point::new(br, cy));
+        pts.push(ctx.at(br, ctx.cc));
         p.polyline(pts, stroke(style));
         if let Some(l) = label {
-            draw_label(p, bounds, &l, style);
+            ctx.label(p, &l, style);
         }
     }
 }
@@ -219,13 +363,17 @@ impl Symbol for Capacitor {
                 PropValue::text(""),
                 "Override label text.",
             ),
+            axis_orientation_prop(),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
-        tt_size(value_label(props, "farads", "F").is_some())
+        let has = value_label(props, "farads", "F").is_some();
+        tt_size(axis_facing(props), has, DEFAULT_W, BODY_H)
     }
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
-        tt_ports(bounds, value_label(props, "farads", "F").is_some())
+        let facing = axis_facing(props);
+        let has = value_label(props, "farads", "F").is_some();
+        Tt::new(bounds, facing, label_strip(facing, has)).ports()
     }
     fn draw(
         &self,
@@ -235,26 +383,27 @@ impl Symbol for Capacitor {
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
+        let facing = axis_facing(props);
         let label = value_label(props, "farads", "F");
-        let cy = tt_centerline(bounds, label.is_some());
+        let ctx = Tt::new(bounds, facing, label_strip(facing, label.is_some()));
         let gap = 6.0;
-        let mid = bounds.center().x;
+        let mid = ctx.long / 2.0;
         let plate_l = mid - gap / 2.0;
         let plate_r = mid + gap / 2.0;
-        draw_leads(p, bounds, plate_l, plate_r, cy, style);
-        let plate_h = 16.0;
+        ctx.leads(p, plate_l, plate_r, style);
+        let half = 8.0;
         p.line(
-            Point::new(plate_l, cy - plate_h / 2.0),
-            Point::new(plate_l, cy + plate_h / 2.0),
+            ctx.at(plate_l, ctx.cc - half),
+            ctx.at(plate_l, ctx.cc + half),
             stroke(style),
         );
         p.line(
-            Point::new(plate_r, cy - plate_h / 2.0),
-            Point::new(plate_r, cy + plate_h / 2.0),
+            ctx.at(plate_r, ctx.cc - half),
+            ctx.at(plate_r, ctx.cc + half),
             stroke(style),
         );
         if let Some(l) = label {
-            draw_label(p, bounds, &l, style);
+            ctx.label(p, &l, style);
         }
     }
 }
@@ -286,13 +435,17 @@ impl Symbol for Inductor {
                 PropValue::text(""),
                 "Override label text.",
             ),
+            axis_orientation_prop(),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
-        tt_size(value_label(props, "henries", "H").is_some())
+        let has = value_label(props, "henries", "H").is_some();
+        tt_size(axis_facing(props), has, DEFAULT_W, BODY_H)
     }
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
-        tt_ports(bounds, value_label(props, "henries", "H").is_some())
+        let facing = axis_facing(props);
+        let has = value_label(props, "henries", "H").is_some();
+        Tt::new(bounds, facing, label_strip(facing, has)).ports()
     }
     fn draw(
         &self,
@@ -302,24 +455,24 @@ impl Symbol for Inductor {
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
+        let facing = axis_facing(props);
         let label = value_label(props, "henries", "H");
-        let cy = tt_centerline(bounds, label.is_some());
-        let (bl, br) = body_extent(bounds);
-        draw_leads(p, bounds, bl, br, cy, style);
-        // Four semicircular humps as quadratic-ish cubic arcs.
+        let ctx = Tt::new(bounds, facing, label_strip(facing, label.is_some()));
+        let (bl, br) = ctx.body();
+        ctx.leads(p, bl, br, style);
+        // Four semicircular humps as cubic arcs, bumping toward -c.
         let humps = 4;
         let w = (br - bl) / humps as f64;
         let r = w / 2.0;
-        let mut cmds = vec![PathCmd::MoveTo(Point::new(bl, cy))];
+        let k = r * 1.333;
+        let mut cmds = vec![PathCmd::MoveTo(ctx.at(bl, ctx.cc))];
         for i in 0..humps {
-            let x0 = bl + i as f64 * w;
-            let x1 = x0 + w;
-            // Cubic approximating a semicircle bump upward.
-            let k = r * 1.333;
+            let a0 = bl + i as f64 * w;
+            let a1 = a0 + w;
             cmds.push(PathCmd::CurveTo(
-                Point::new(x0, cy - k),
-                Point::new(x1, cy - k),
-                Point::new(x1, cy),
+                ctx.at(a0, ctx.cc - k),
+                ctx.at(a1, ctx.cc - k),
+                ctx.at(a1, ctx.cc),
             ));
         }
         p.path(
@@ -327,7 +480,7 @@ impl Symbol for Inductor {
             ShapeStyle::outline(style.stroke, style.stroke_width.max(1.0)),
         );
         if let Some(l) = label {
-            draw_label(p, bounds, &l, style);
+            ctx.label(p, &l, style);
         }
     }
 }
@@ -346,18 +499,24 @@ impl Symbol for Diode {
         "Diode (triangle + cathode bar), anode `a` to cathode `b`."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
-        vec![PropertySpec::optional(
-            "label",
-            PropKind::Text,
-            PropValue::text(""),
-            "Optional label.",
-        )]
+        vec![
+            PropertySpec::optional(
+                "label",
+                PropKind::Text,
+                PropValue::text(""),
+                "Optional label.",
+            ),
+            dir_orientation_prop("right"),
+        ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
-        tt_size(!props.text_or("label", "").is_empty())
+        let has = !props.text_or("label", "").is_empty();
+        tt_size(dir_facing(props, Facing::Right), has, DEFAULT_W, BODY_H)
     }
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
-        tt_ports(bounds, !props.text_or("label", "").is_empty())
+        let facing = dir_facing(props, Facing::Right);
+        let has = !props.text_or("label", "").is_empty();
+        Tt::new(bounds, facing, label_strip(facing, has)).ports()
     }
     fn draw(
         &self,
@@ -367,31 +526,31 @@ impl Symbol for Diode {
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
+        let facing = dir_facing(props, Facing::Right);
         let has_label = !props.text_or("label", "").is_empty();
-        let cy = tt_centerline(bounds, has_label);
-        let mid = bounds.center().x;
+        let ctx = Tt::new(bounds, facing, label_strip(facing, has_label));
+        let mid = ctx.long / 2.0;
         let half = 9.0;
         let tri_l = mid - half;
         let tri_r = mid + half;
-        draw_leads(p, bounds, tri_l, tri_r, cy, style);
-        // Triangle pointing right.
+        ctx.leads(p, tri_l, tri_r, style);
+        // Triangle pointing toward the cathode (+a), then the cathode bar.
         p.path(
             vec![
-                PathCmd::MoveTo(Point::new(tri_l, cy - half)),
-                PathCmd::LineTo(Point::new(tri_l, cy + half)),
-                PathCmd::LineTo(Point::new(tri_r, cy)),
+                PathCmd::MoveTo(ctx.at(tri_l, ctx.cc - half)),
+                PathCmd::LineTo(ctx.at(tri_l, ctx.cc + half)),
+                PathCmd::LineTo(ctx.at(tri_r, ctx.cc)),
                 PathCmd::Close,
             ],
             filled(style),
         );
-        // Cathode bar.
         p.line(
-            Point::new(tri_r, cy - half),
-            Point::new(tri_r, cy + half),
+            ctx.at(tri_r, ctx.cc - half),
+            ctx.at(tri_r, ctx.cc + half),
             stroke(style),
         );
         if has_label {
-            draw_label(p, bounds, props.text_or("label", ""), style);
+            ctx.label(p, props.text_or("label", ""), style);
         }
     }
 }
@@ -401,6 +560,8 @@ impl Symbol for Diode {
 // ---------------------------------------------------------------------------
 
 pub struct VoltageSource;
+
+const VSOURCE_BODY: f64 = 34.0;
 
 impl Symbol for VoltageSource {
     fn name(&self) -> &str {
@@ -423,14 +584,22 @@ impl Symbol for VoltageSource {
                 PropValue::text(""),
                 "Override label text.",
             ),
+            dir_orientation_prop("right"),
         ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
-        let has_label = value_label(props, "volts", "V").is_some();
-        Size::new(DEFAULT_W, 34.0 + if has_label { LABEL_H } else { 0.0 })
+        let has = value_label(props, "volts", "V").is_some();
+        tt_size(
+            dir_facing(props, Facing::Right),
+            has,
+            DEFAULT_W,
+            VSOURCE_BODY,
+        )
     }
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
-        tt_ports(bounds, value_label(props, "volts", "V").is_some())
+        let facing = dir_facing(props, Facing::Right);
+        let has = value_label(props, "volts", "V").is_some();
+        Tt::new(bounds, facing, label_strip(facing, has)).ports()
     }
     fn draw(
         &self,
@@ -440,31 +609,34 @@ impl Symbol for VoltageSource {
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
+        let facing = dir_facing(props, Facing::Right);
         let label = value_label(props, "volts", "V");
-        let cy = tt_centerline(bounds, label.is_some());
-        let mid = bounds.center().x;
+        let ctx = Tt::new(bounds, facing, label_strip(facing, label.is_some()));
+        let mid = ctx.long / 2.0;
         let r = 15.0;
-        draw_leads(p, bounds, mid - r, mid + r, cy, style);
-        p.circle(Point::new(mid, cy), r, outline(style));
-        // + on the left half, - on the right half.
+        ctx.leads(p, mid - r, mid + r, style);
+        p.circle(ctx.at(mid, ctx.cc), r, outline(style));
+        // + toward the start lead, - toward the end lead.
         let s = 4.0;
+        let plus = mid - r * 0.45;
+        let minus = mid + r * 0.45;
         p.line(
-            Point::new(mid - r * 0.45 - s, cy),
-            Point::new(mid - r * 0.45 + s, cy),
+            ctx.at(plus - s, ctx.cc),
+            ctx.at(plus + s, ctx.cc),
             stroke(style),
         );
         p.line(
-            Point::new(mid - r * 0.45, cy - s),
-            Point::new(mid - r * 0.45, cy + s),
+            ctx.at(plus, ctx.cc - s),
+            ctx.at(plus, ctx.cc + s),
             stroke(style),
         );
         p.line(
-            Point::new(mid + r * 0.45 - s, cy),
-            Point::new(mid + r * 0.45 + s, cy),
+            ctx.at(minus - s, ctx.cc),
+            ctx.at(minus + s, ctx.cc),
             stroke(style),
         );
         if let Some(l) = label {
-            draw_label(p, bounds, &l, style);
+            ctx.label(p, &l, style);
         }
     }
 }
@@ -480,21 +652,27 @@ impl Symbol for Switch {
         "switch"
     }
     fn description(&self) -> &str {
-        "SPST switch (open). `label` is drawn above."
+        "SPST switch (open). `label` is drawn alongside."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
-        vec![PropertySpec::optional(
-            "label",
-            PropKind::Text,
-            PropValue::text(""),
-            "Optional label.",
-        )]
+        vec![
+            PropertySpec::optional(
+                "label",
+                PropKind::Text,
+                PropValue::text(""),
+                "Optional label.",
+            ),
+            axis_orientation_prop(),
+        ]
     }
     fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
-        tt_size(!props.text_or("label", "").is_empty())
+        let has = !props.text_or("label", "").is_empty();
+        tt_size(axis_facing(props), has, DEFAULT_W, BODY_H)
     }
     fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
-        tt_ports(bounds, !props.text_or("label", "").is_empty())
+        let facing = axis_facing(props);
+        let has = !props.text_or("label", "").is_empty();
+        Tt::new(bounds, facing, label_strip(facing, has)).ports()
     }
     fn draw(
         &self,
@@ -504,26 +682,21 @@ impl Symbol for Switch {
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
+        let facing = axis_facing(props);
         let has_label = !props.text_or("label", "").is_empty();
-        let cy = tt_centerline(bounds, has_label);
-        let (bl, br) = body_extent(bounds);
-        // Leads to the two contact dots.
-        p.line(Point::new(bounds.x, cy), Point::new(bl, cy), stroke(style));
+        let ctx = Tt::new(bounds, facing, label_strip(facing, has_label));
+        let (bl, br) = ctx.body();
+        ctx.leads(p, bl, br, style);
+        p.circle(ctx.at(bl, ctx.cc), 1.6, filled(style));
+        p.circle(ctx.at(br, ctx.cc), 1.6, filled(style));
+        // Open lever from the start contact, angled off the centerline to near the end contact.
         p.line(
-            Point::new(br, cy),
-            Point::new(bounds.right(), cy),
-            stroke(style),
-        );
-        p.circle(Point::new(bl, cy), 1.6, filled(style));
-        p.circle(Point::new(br, cy), 1.6, filled(style));
-        // Open lever from the left dot, angled up to near the right dot.
-        p.line(
-            Point::new(bl, cy),
-            Point::new(br - 2.0, cy - 10.0),
+            ctx.at(bl, ctx.cc),
+            ctx.at(br - 2.0, ctx.cc - 10.0),
             stroke(style),
         );
         if has_label {
-            draw_label(p, bounds, props.text_or("label", ""), style);
+            ctx.label(p, props.text_or("label", ""), style);
         }
     }
 }
@@ -534,40 +707,80 @@ impl Symbol for Switch {
 
 pub struct Ground;
 
+/// The direction the ground's single lead/port points (toward the circuit).
+fn ground_dir(props: &Props) -> Dir {
+    match props.text_or("orientation", "up") {
+        "down" => Dir::Down,
+        "left" => Dir::Left,
+        "right" => Dir::Right,
+        _ => Dir::Up,
+    }
+}
+
+/// Map a ground natural-frame point — `a` from the port into the symbol, `c` across — for the
+/// port direction `dir`. The natural frame points up (port at top, bars below).
+fn ground_at(bounds: Rect, dir: Dir, a: f64, c: f64) -> Point {
+    let b = bounds;
+    match dir {
+        Dir::Up => Point::new(b.x + c, b.y + a),
+        Dir::Down => Point::new(b.x + c, b.bottom() - a),
+        Dir::Right => Point::new(b.right() - a, b.y + c),
+        Dir::Left => Point::new(b.x + a, b.y + c),
+    }
+}
+
+/// `(long, short)` natural extents of the ground for the given facing.
+fn ground_extents(bounds: Rect, dir: Dir) -> (f64, f64) {
+    match dir {
+        Dir::Up | Dir::Down => (bounds.height, bounds.width),
+        Dir::Left | Dir::Right => (bounds.width, bounds.height),
+    }
+}
+
 impl Symbol for Ground {
     fn name(&self) -> &str {
         "ground"
     }
     fn description(&self) -> &str {
-        "Ground symbol; single port `a` at the top."
+        "Ground symbol; single port `a`. `orientation` points the lead up (default)/down/left/right."
     }
-    fn measure(&self, _props: &Props, _m: &dyn TextMeasurer) -> Size {
-        Size::new(28.0, 26.0)
+    fn property_schema(&self) -> Vec<PropertySpec> {
+        vec![dir_orientation_prop("up")]
     }
-    fn ports(&self, bounds: Rect, _props: &Props) -> Vec<Port> {
+    fn measure(&self, props: &Props, _m: &dyn TextMeasurer) -> Size {
+        match ground_dir(props) {
+            Dir::Up | Dir::Down => Size::new(28.0, 26.0),
+            Dir::Left | Dir::Right => Size::new(26.0, 28.0),
+        }
+    }
+    fn ports(&self, bounds: Rect, props: &Props) -> Vec<Port> {
+        let dir = ground_dir(props);
+        let (_, short) = ground_extents(bounds, dir);
         vec![Port::new(
             "a",
-            Point::new(bounds.center().x, bounds.y),
-            Dir::Up,
+            ground_at(bounds, dir, 0.0, short / 2.0),
+            dir,
         )]
     }
     fn draw(
         &self,
         p: &mut Painter,
         bounds: Rect,
-        _props: &Props,
+        props: &Props,
         style: &Style,
         _m: &dyn TextMeasurer,
     ) {
-        let cx = bounds.center().x;
-        let top = bounds.y;
-        // Vertical lead then three shrinking horizontal bars.
-        let bar_y = top + 10.0;
-        p.line(Point::new(cx, top), Point::new(cx, bar_y), stroke(style));
+        let dir = ground_dir(props);
+        let (_, short) = ground_extents(bounds, dir);
+        let cc = short / 2.0;
+        let at = |a: f64, c: f64| ground_at(bounds, dir, a, c);
+        // Lead from the port, then three shrinking bars.
+        let bar_a = 10.0;
+        p.line(at(0.0, cc), at(bar_a, cc), stroke(style));
         let widths = [14.0, 9.0, 4.0];
         for (i, w) in widths.iter().enumerate() {
-            let y = bar_y + i as f64 * 5.0;
-            p.line(Point::new(cx - w, y), Point::new(cx + w, y), stroke(style));
+            let a = bar_a + i as f64 * 5.0;
+            p.line(at(a, cc - w), at(a, cc + w), stroke(style));
         }
     }
 }
@@ -622,9 +835,31 @@ struct PinPlacement {
     body_anchor: Point,
 }
 
+/// Positions of `count` pins along a side spanning `[start, start+extent]`. With `spacing > 0`
+/// the pins are placed at exactly that center-to-center distance, as a block centered on the
+/// side; otherwise they are distributed evenly (the historical default).
+fn side_positions(count: usize, spacing: f64, start: f64, extent: f64) -> Vec<f64> {
+    if count == 0 {
+        return Vec::new();
+    }
+    if spacing > 0.0 {
+        let span = (count as f64 - 1.0) * spacing;
+        let first = start + (extent - span) / 2.0;
+        (0..count).map(|i| first + i as f64 * spacing).collect()
+    } else {
+        (0..count)
+            .map(|i| start + extent * (i as f64 + 1.0) / (count as f64 + 1.0))
+            .collect()
+    }
+}
+
 impl Ic {
     fn pins(props: &Props, side: &str) -> Vec<String> {
         props.text_list(side)
+    }
+
+    fn spacing(props: &Props, side: &str) -> f64 {
+        props.number_or(side, 0.0).max(0.0)
     }
 
     /// Compute the body rectangle within `bounds`, reserving lead space on sides that have
@@ -648,8 +883,14 @@ impl Ic {
         let body = Self::body_rect(bounds, !top.is_empty(), !bottom.is_empty());
         let mut out = Vec::new();
 
+        let ys_left = side_positions(
+            left.len(),
+            Self::spacing(props, "left_spacing"),
+            body.y,
+            body.height,
+        );
         for (i, name) in left.iter().enumerate() {
-            let y = body.y + body.height * (i as f64 + 1.0) / (left.len() as f64 + 1.0);
+            let y = ys_left[i];
             out.push(PinPlacement {
                 name: name.clone(),
                 tip: Point::new(bounds.x, y),
@@ -659,8 +900,14 @@ impl Ic {
                 body_anchor: Point::new(body.x, y),
             });
         }
+        let ys_right = side_positions(
+            right.len(),
+            Self::spacing(props, "right_spacing"),
+            body.y,
+            body.height,
+        );
         for (i, name) in right.iter().enumerate() {
-            let y = body.y + body.height * (i as f64 + 1.0) / (right.len() as f64 + 1.0);
+            let y = ys_right[i];
             out.push(PinPlacement {
                 name: name.clone(),
                 tip: Point::new(bounds.right(), y),
@@ -670,8 +917,14 @@ impl Ic {
                 body_anchor: Point::new(body.right(), y),
             });
         }
+        let xs_top = side_positions(
+            top.len(),
+            Self::spacing(props, "top_spacing"),
+            body.x,
+            body.width,
+        );
         for (i, name) in top.iter().enumerate() {
-            let x = body.x + body.width * (i as f64 + 1.0) / (top.len() as f64 + 1.0);
+            let x = xs_top[i];
             out.push(PinPlacement {
                 name: name.clone(),
                 tip: Point::new(x, bounds.y),
@@ -681,8 +934,14 @@ impl Ic {
                 body_anchor: Point::new(x, body.y),
             });
         }
+        let xs_bottom = side_positions(
+            bottom.len(),
+            Self::spacing(props, "bottom_spacing"),
+            body.x,
+            body.width,
+        );
         for (i, name) in bottom.iter().enumerate() {
-            let x = body.x + body.width * (i as f64 + 1.0) / (bottom.len() as f64 + 1.0);
+            let x = xs_bottom[i];
             out.push(PinPlacement {
                 name: name.clone(),
                 tip: Point::new(x, bounds.bottom()),
@@ -701,7 +960,7 @@ impl Symbol for Ic {
         "ic"
     }
     fn description(&self) -> &str {
-        "Generic IC / chip with a `name` and named pins on each side (left_pins, right_pins, top_pins, bottom_pins)."
+        "Generic IC / chip with a `name` and named pins on each side (left_pins, right_pins, top_pins, bottom_pins). Per-side `*_spacing` (px) spreads the pins out."
     }
     fn property_schema(&self) -> Vec<PropertySpec> {
         vec![
@@ -735,6 +994,30 @@ impl Symbol for Ic {
                 PropValue::List(vec![]),
                 "Pin names along the bottom.",
             ),
+            PropertySpec::optional(
+                "left_spacing",
+                PropKind::Number,
+                PropValue::Number(0.0),
+                "Exact px between adjacent left pins (0 = auto).",
+            ),
+            PropertySpec::optional(
+                "right_spacing",
+                PropKind::Number,
+                PropValue::Number(0.0),
+                "Exact px between adjacent right pins (0 = auto).",
+            ),
+            PropertySpec::optional(
+                "top_spacing",
+                PropKind::Number,
+                PropValue::Number(0.0),
+                "Exact px between adjacent top pins (0 = auto).",
+            ),
+            PropertySpec::optional(
+                "bottom_spacing",
+                PropKind::Number,
+                PropValue::Number(0.0),
+                "Exact px between adjacent bottom pins (0 = auto).",
+            ),
         ]
     }
 
@@ -758,6 +1041,16 @@ impl Symbol for Ic {
         let name_w = m.measure_line(name, "sans-serif", 13.0).width;
         let rows = left.len().max(right.len()).max(1);
 
+        // A side with explicit spacing needs `(n+1) * spacing` so adjacent pins (and the end
+        // margins) sit exactly that far apart once `side_positions` centers them.
+        let spacing_need = |n: usize, sp: f64| {
+            if sp > 0.0 {
+                (n as f64 + 1.0) * sp
+            } else {
+                0.0
+            }
+        };
+
         // Width must fit: left labels + centered name + right labels (with clearance), and
         // enough column spacing that top/bottom pin labels don't overlap.
         let horizontal_need = left_w + right_w + name_w + 36.0;
@@ -767,8 +1060,22 @@ impl Symbol for Ic {
             .max(top_need)
             .max(bottom_need)
             .max(name_w + 16.0)
+            .max(spacing_need(top.len(), Self::spacing(props, "top_spacing")))
+            .max(spacing_need(
+                bottom.len(),
+                Self::spacing(props, "bottom_spacing"),
+            ))
             .max(48.0);
-        let inner_h = (rows as f64 * IC_PIN_SPACING).max(40.0);
+        let inner_h = (rows as f64 * IC_PIN_SPACING)
+            .max(spacing_need(
+                left.len(),
+                Self::spacing(props, "left_spacing"),
+            ))
+            .max(spacing_need(
+                right.len(),
+                Self::spacing(props, "right_spacing"),
+            ))
+            .max(40.0);
 
         let top_lead = if top.is_empty() { 0.0 } else { IC_LEAD };
         let bottom_lead = if bottom.is_empty() { 0.0 } else { IC_LEAD };
@@ -837,6 +1144,14 @@ mod tests {
         r
     }
 
+    fn with_props(sym: &dyn Symbol, pairs: &[(&str, PropValue)]) -> Props {
+        let mut props = Props::new();
+        for (k, v) in pairs {
+            props.insert(*k, v.clone());
+        }
+        props.with_defaults(&sym.property_schema())
+    }
+
     #[test]
     fn plugin_registers_all_symbols() {
         let reg = registry();
@@ -896,6 +1211,93 @@ mod tests {
         );
         let without = r.measure(&Props::new(), &m);
         assert!(with.height > without.height);
+    }
+
+    #[test]
+    fn resistor_vertical_swaps_size_and_ports() {
+        let r = Resistor;
+        let m = BasicMeasurer::default();
+        let horiz = with_props(&r, &[("ohms", PropValue::Number(220.0))]);
+        let vert = with_props(
+            &r,
+            &[
+                ("ohms", PropValue::Number(220.0)),
+                ("orientation", PropValue::text("vertical")),
+            ],
+        );
+        let hs = r.measure(&horiz, &m);
+        let vs = r.measure(&vert, &m);
+        // Horizontal is wider than tall; vertical is the transpose (taller than wide).
+        assert!(hs.width > hs.height);
+        assert!(vs.height > vs.width);
+        assert!((vs.height - hs.width).abs() < 1e-9);
+
+        // Vertical ports land on the top/bottom edges, facing up/down.
+        let bounds = Rect::from_origin_size(Point::ZERO, vs);
+        let ports = r.ports(bounds, &vert);
+        let a = ports.iter().find(|p| p.name == "a").unwrap();
+        let b = ports.iter().find(|p| p.name == "b").unwrap();
+        assert_eq!(a.dir, Dir::Up);
+        assert_eq!(b.dir, Dir::Down);
+        assert!((a.point.y - bounds.y).abs() < 1e-9);
+        assert!((b.point.y - bounds.bottom()).abs() < 1e-9);
+    }
+
+    #[test]
+    fn diode_flips_with_orientation() {
+        let d = Diode;
+        let m = BasicMeasurer::default();
+        let right = with_props(&d, &[]);
+        let left = with_props(&d, &[("orientation", PropValue::text("left"))]);
+        let bounds = Rect::from_origin_size(Point::ZERO, d.measure(&right, &m));
+
+        // Anode `a` rides the left edge facing right, mirrored to the right edge facing left.
+        let ar = d.ports(bounds, &right);
+        let a_r = ar.iter().find(|p| p.name == "a").unwrap();
+        assert_eq!(a_r.dir, Dir::Left);
+        assert!((a_r.point.x - bounds.x).abs() < 1e-9);
+
+        let al = d.ports(bounds, &left);
+        let a_l = al.iter().find(|p| p.name == "a").unwrap();
+        assert_eq!(a_l.dir, Dir::Right);
+        assert!((a_l.point.x - bounds.right()).abs() < 1e-9);
+
+        // `up`/`down` transpose the bounding box.
+        let up = with_props(&d, &[("orientation", PropValue::text("up"))]);
+        let us = d.measure(&up, &m);
+        assert!(us.height > us.width);
+
+        // Still draws its filled triangle.
+        let mut p = Painter::new();
+        d.draw(&mut p, bounds, &right, &Style::default(), &m);
+        assert!(p
+            .primitives()
+            .iter()
+            .any(|x| matches!(x, Primitive::Path { .. })));
+    }
+
+    #[test]
+    fn ground_orientation_moves_the_port() {
+        let g = Ground;
+        // Default: port at the top, facing up.
+        let up = with_props(&g, &[]);
+        let bounds = Rect::new(0.0, 0.0, 28.0, 26.0);
+        let ports = g.ports(bounds, &up);
+        assert_eq!(ports.len(), 1);
+        assert_eq!(ports[0].dir, Dir::Up);
+        assert!((ports[0].point.y - bounds.y).abs() < 1e-9);
+
+        // Down: port at the bottom, facing down (size unchanged for the vertical axis).
+        let down = with_props(&g, &[("orientation", PropValue::text("down"))]);
+        let ports = g.ports(bounds, &down);
+        assert_eq!(ports[0].dir, Dir::Down);
+        assert!((ports[0].point.y - bounds.bottom()).abs() < 1e-9);
+
+        // Right: the box transposes to 26x28.
+        let right = with_props(&g, &[("orientation", PropValue::text("right"))]);
+        let m = BasicMeasurer::default();
+        let s = g.measure(&right, &m);
+        assert!((s.width - 26.0).abs() < 1e-9 && (s.height - 28.0).abs() < 1e-9);
     }
 
     #[test]
@@ -960,12 +1362,39 @@ mod tests {
     }
 
     #[test]
-    fn ground_has_single_top_port() {
-        let g = Ground;
-        let bounds = Rect::new(0.0, 0.0, 28.0, 26.0);
-        let ports = g.ports(bounds, &Props::new());
-        assert_eq!(ports.len(), 1);
-        assert_eq!(ports[0].name, "a");
-        assert_eq!(ports[0].dir, Dir::Up);
+    fn ic_left_spacing_spreads_pins_exactly() {
+        let ic = Ic;
+        let m = BasicMeasurer::default();
+        let pins = PropValue::List(vec![
+            PropValue::text("A"),
+            PropValue::text("B"),
+            PropValue::text("C"),
+        ]);
+
+        let auto = {
+            let mut p = Props::new();
+            p.insert("left_pins", pins.clone());
+            p
+        };
+        let spaced = {
+            let mut p = Props::new();
+            p.insert("left_pins", pins.clone());
+            p.insert("left_spacing", PropValue::Number(40.0));
+            p
+        };
+
+        // Explicit spacing grows the IC taller than the auto layout.
+        assert!(ic.measure(&spaced, &m).height > ic.measure(&auto, &m).height);
+
+        // Adjacent left ports end up exactly 40px apart.
+        let bounds = Rect::from_origin_size(Point::ZERO, ic.measure(&spaced, &m));
+        let mut ys: Vec<f64> = ic
+            .ports(bounds, &spaced)
+            .iter()
+            .map(|p| p.point.y)
+            .collect();
+        ys.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert!((ys[1] - ys[0] - 40.0).abs() < 1e-6);
+        assert!((ys[2] - ys[1] - 40.0).abs() < 1e-6);
     }
 }

@@ -1,18 +1,23 @@
 # diagram
 
-A [Claude](https://claude.com/claude-code) **skill** plus a companion command-line tool for
+Have you ever wished that [Claude](https://claude.com/claude-code) could show instead
+of tell.
+
+A Claude **skill** plus a companion command-line tool for
 drawing diagrams. You (or Claude) describe a diagram in a small, commented **YAML** language;
 `diagram` lays it out automatically and renders it to **PNG**, **SVG**, or **PDF**.
 
-- **Box-model auto-layout** (`vbox` / `hbox` / `box`) so you rarely place raw coordinates.
-- **Variables + expressions**, including inline text measurement, so sizes aren't hand-computed.
-- A **plugin system for symbol libraries** — ships with **schematic** (electronic),
+* Designed with AI interaction in mind. With a library of symbols that it can use to communicate
+  with you, or to illustrate your documentation.
+* **Box-model auto-layout** (`vbox` / `hbox` / `box`) so you rarely place raw coordinates.
+* **Variables + expressions**, including inline text measurement, so sizes aren't hand-computed.
+* A **plugin system for symbol libraries** — ships with **schematic** (electronic),
   **dataflow / DFD**, and **shapes** (generic colored rectangles, circles, ovals, explosion
   callouts, and block arrows) symbols, including a generic IC with named pins.
-- Mixes **semantic symbols** with **raw draw primitives** for fine-grained control.
-- A single self-contained binary, no runtime dependencies.
+* Mixes **semantic symbols** with **raw draw primitives** for fine-grained control.
+* A single self-contained binary, no runtime dependencies.
 
----
+***
 
 ## Installation
 
@@ -28,14 +33,14 @@ curl -fsSL "https://github.com/jmoiv/diagram/releases/latest/download/diagram_$(
 > If `/usr/local/bin` is owned by root, prefix with `sudo sh -c '...'`.
 
 On Windows, use the same command in **Git Bash** or **WSL** — both include `curl` and
-`gunzip`. Or download [windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.gz)
+`gunzip`. Or download [windows-x86\_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.gz)
 and decompress it manually.
 
-Direct links: [diagram_Linux-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Linux-x86_64.gz) ·
-[diagram_Linux-aarch64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Linux-aarch64.gz) ·
-[diagram_Darwin-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Darwin-x86_64.gz) ·
-[diagram_Darwin-arm64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Darwin-arm64.gz) ·
-[diagram_windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_windows-x86_64.gz)
+Direct links: [diagram\_Linux-x86\_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Linux-x86_64.gz) ·
+[diagram\_Linux-aarch64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Linux-aarch64.gz) ·
+[diagram\_Darwin-x86\_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Darwin-x86_64.gz) ·
+[diagram\_Darwin-arm64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Darwin-arm64.gz) ·
+[diagram\_windows-x86\_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_windows-x86_64.gz)
 
 To build from source instead, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
@@ -82,7 +87,7 @@ directory (which typically already has `~/.claude`) to install it globally. Afte
 Claude will discover symbols and fonts via the CLI, author the commented YAML, measure text
 when needed, and render diagrams for you on request.
 
----
+***
 
 ## Usage
 
@@ -117,7 +122,7 @@ diagram fonts list
 diagram fonts query --family "DejaVu Sans"
 ```
 
----
+***
 
 ## Examples
 
@@ -127,39 +132,47 @@ Each example below is a commented `.yaml` file in [`examples/`](examples/), rend
 ### Schematic — an RC low-pass filter
 
 A horizontal row of two-terminal components with value labels and a wire connection.
-([rc_filter.yaml](examples/rc_filter.yaml))
+([rc\_filter.yaml](examples/rc_filter.yaml))
 
 ![RC filter schematic](docs/images/rc_filter.png)
 
 ### Generic IC with named pins
 
 The `schematic.ic` symbol auto-sizes to fit the chip name and pin labels; each pin becomes a
-connectable port. ([ic_atmega.yaml](examples/ic_atmega.yaml))
+connectable port. ([ic\_atmega.yaml](examples/ic_atmega.yaml))
 
 ![ATmega IC](docs/images/ic_atmega.png)
+
+### Orientation and IC pin spacing
+
+Schematic parts take an `orientation` (axis parts `horizontal`/`vertical`; polarized parts
+`right`/`left`/`up`/`down`), and the IC's per-side `*_spacing` spreads its pins out.
+([orientation.yaml](examples/orientation.yaml))
+
+![Vertical divider into a spaced IC](docs/images/orientation.png)
 
 ### Data-flow diagram
 
 DFD symbols (external entity, process, data store) connected with labeled, arrow-headed flows.
-([dfd_login.yaml](examples/dfd_login.yaml))
+([dfd\_login.yaml](examples/dfd_login.yaml))
 
 ![Login data-flow diagram](docs/images/dfd_login.png)
 
 ### Auto-sized note card
 
 Variables, inline text measurement (`para_height`), a `box` stack, and wrapped paragraph text
-— the card's height is computed from its content. ([note_card.yaml](examples/note_card.yaml))
+— the card's height is computed from its content. ([note\_card.yaml](examples/note_card.yaml))
 
 ![Note card](docs/images/note_card.png)
 
 ### Generic shapes
 
 The `shapes` plugin — colored rectangles, circles, ovals, an explosion callout, and a block
-arrow, each with `fill` and `text_color`. ([shapes_flowchart.yaml](examples/shapes_flowchart.yaml))
+arrow, each with `fill` and `text_color`. ([shapes\_flowchart.yaml](examples/shapes_flowchart.yaml))
 
 ![Generic shapes flowchart](docs/images/shapes_flowchart.png)
 
----
+***
 
 ## The diagram language
 
@@ -193,7 +206,7 @@ boundary), and **shapes** (rectangle, circle, oval, explosion callout, block arr
 > Tip: inside YAML **flow** mappings (`{ ... }`), quote expressions — `{ width: "${w}" }` —
 > because the `}` would otherwise close the mapping. Block style needs no quoting.
 
----
+***
 
 ## Development
 
