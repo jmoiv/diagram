@@ -52,8 +52,9 @@ pub fn layout_document(
     let mut out = LayoutOut::default();
     place(&lroot, content, measurer, &mut out);
 
-    for c in &doc.connections {
-        draw_connection(c, &out.nodes, &base, measurer, &mut out.primitives)?;
+    let offsets = ortho_offsets(&doc.connections, &out.nodes);
+    for (c, &offset) in doc.connections.iter().zip(offsets.iter()) {
+        draw_connection(c, &out.nodes, &base, measurer, &mut out.primitives, offset)?;
     }
 
     Ok(Scene {
@@ -669,12 +670,66 @@ fn resolve_port(
     }
 }
 
+/// Pixels between adjacent parallel orthogonal connections at their shared shift column.
+const ORTHO_SEP: f64 = 8.0;
+
+/// Pre-compute per-connection x-offsets so parallel orthogonal connections (those whose
+/// natural `midx` lands in the same pixel column) are fanned apart symmetrically.
+/// Returns a `Vec` aligned with `connections`; non-orthogonal entries are `0.0`.
+fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>) -> Vec<f64> {
+    // Resolve the natural midx for every orthogonal connection.
+    let midxs: Vec<Option<f64>> = connections
+        .iter()
+        .map(|c| {
+            if c.routing != Routing::Orthogonal {
+                return None;
+            }
+            let p1 = resolve_port(&c.from, nodes).ok()?.0;
+            let p2 = resolve_port(&c.to, nodes).ok()?.0;
+            Some((p1.x + p2.x) / 2.0)
+        })
+        .collect();
+
+    // Group indices by their midx rounded to the nearest pixel.
+    let mut groups: HashMap<i64, Vec<usize>> = HashMap::new();
+    for (i, mx) in midxs.iter().enumerate() {
+        if let Some(mx) = mx {
+            groups.entry(mx.round() as i64).or_default().push(i);
+        }
+    }
+
+    let mut offsets = vec![0.0f64; connections.len()];
+    for indices in groups.values() {
+        if indices.len() < 2 {
+            continue; // solo connection — no spread needed
+        }
+        // Sort by source y so the offset order follows visual top-to-bottom order.
+        let mut sorted = indices.clone();
+        sorted.sort_by(|&a, &b| {
+            let ya = resolve_port(&connections[a].from, nodes)
+                .map(|(p, _)| p.y)
+                .unwrap_or(0.0);
+            let yb = resolve_port(&connections[b].from, nodes)
+                .map(|(p, _)| p.y)
+                .unwrap_or(0.0);
+            ya.partial_cmp(&yb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let n = sorted.len() as f64;
+        for (rank, &idx) in sorted.iter().enumerate() {
+            // Center the fan on the natural midx: rank 0 gets the most negative offset.
+            offsets[idx] = (rank as f64 - (n - 1.0) / 2.0) * ORTHO_SEP;
+        }
+    }
+    offsets
+}
+
 fn draw_connection(
     c: &Connect,
     nodes: &HashMap<String, ResolvedNode>,
     base: &Style,
     measurer: &dyn TextMeasurer,
     prims: &mut Vec<Primitive>,
+    offset: f64,
 ) -> Result<()> {
     let style = base.inherit(&c.style);
     let (p1, _d1) = resolve_port(&c.from, nodes)?;
@@ -683,7 +738,7 @@ fn draw_connection(
     let pts: Vec<Point> = match c.routing {
         Routing::Straight => vec![p1, p2],
         Routing::Orthogonal => {
-            let midx = (p1.x + p2.x) / 2.0;
+            let midx = (p1.x + p2.x) / 2.0 + offset;
             vec![p1, Point::new(midx, p1.y), Point::new(midx, p2.y), p2]
         }
     };

@@ -139,3 +139,20 @@ connect:
     label: "signal"      # optional, drawn at the midpoint
     stroke: "#333"       # style overrides allowed
 ```
+
+### Orthogonal routing and parallel lines
+
+Orthogonal routing draws Z-shaped paths: horizontal from the source port to a **shift point**
+at the horizontal midpoint between the two nodes, then vertical, then horizontal to the
+destination.
+
+When multiple connections share the same source column and destination column their natural
+shift points would coincide, producing overlapping lines. The engine detects this automatically
+and fans the shift points apart by **8 px × rank** (centered on the natural midpoint), so
+parallel lines are visibly separated without any extra configuration.
+
+**Leave room.** The fan works best when there is enough horizontal space between nodes that
+`n × 8 px` of spread fits comfortably in the corridor. Six parallel lines need roughly 50 px
+of clearance. Use `col_gap`, `margin`, or a fixed canvas `width` to provide it. The router
+does not detect collisions with node bodies, so avoid placing unrelated nodes inside the spread
+corridor — leave it clear.
