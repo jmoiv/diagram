@@ -57,11 +57,11 @@ fn platform_archive() -> Result<&'static str, Box<dyn std::error::Error>> {
     // File names match `uname -s` / `uname -m` output so the shell install
     // one-liner needs no tr or sed. macOS aarch64 reports "arm64" from uname.
     match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "x86_64") => Ok("Linux-x86_64.gz"),
-        ("linux", "aarch64") => Ok("Linux-aarch64.gz"),
-        ("macos", "x86_64") => Ok("Darwin-x86_64.gz"),
-        ("macos", "aarch64") => Ok("Darwin-arm64.gz"),
-        ("windows", "x86_64") => Ok("windows-x86_64.gz"),
+        ("linux", "x86_64") => Ok("diagram_Linux-x86_64.gz"),
+        ("linux", "aarch64") => Ok("diagram_Linux-aarch64.gz"),
+        ("macos", "x86_64") => Ok("diagram_Darwin-x86_64.gz"),
+        ("macos", "aarch64") => Ok("diagram_Darwin-arm64.gz"),
+        ("windows", "x86_64") => Ok("diagram_windows-x86_64.gz"),
         (os, arch) => Err(format!("unsupported platform: {os}/{arch}").into()),
     }
 }

@@ -21,7 +21,7 @@ drawing diagrams. You (or Claude) describe a diagram in a small, commented **YAM
 On Linux or macOS, paste this into a terminal — `uname` picks the right file automatically:
 
 ```sh
-curl -fsSL "https://github.com/jmoiv/diagram/releases/latest/download/$(uname -s)-$(uname -m).gz" \
+curl -fsSL "https://github.com/jmoiv/diagram/releases/latest/download/diagram_$(uname -s)-$(uname -m).gz" \
   | gunzip > /usr/local/bin/diagram && chmod +x /usr/local/bin/diagram
 ```
 
@@ -31,11 +31,11 @@ On Windows, use the same command in **Git Bash** or **WSL** — both include `cu
 `gunzip`. Or download [windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.gz)
 and decompress it manually.
 
-Direct links: [Linux-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/Linux-x86_64.gz) ·
-[Linux-aarch64.gz](https://github.com/jmoiv/diagram/releases/latest/download/Linux-aarch64.gz) ·
-[Darwin-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/Darwin-x86_64.gz) ·
-[Darwin-arm64.gz](https://github.com/jmoiv/diagram/releases/latest/download/Darwin-arm64.gz) ·
-[windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.gz)
+Direct links: [diagram_Linux-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Linux-x86_64.gz) ·
+[diagram_Linux-aarch64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Linux-aarch64.gz) ·
+[diagram_Darwin-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Darwin-x86_64.gz) ·
+[diagram_Darwin-arm64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_Darwin-arm64.gz) ·
+[diagram_windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/diagram_windows-x86_64.gz)
 
 To build from source instead, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
