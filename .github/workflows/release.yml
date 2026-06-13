@@ -18,32 +18,32 @@ jobs:
           - label: linux-x86_64
             runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            asset: diagram-linux-x86_64
             exe: diagram
+            archive: linux-x86_64.tar.gz
 
           - label: linux-aarch64
             runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            asset: diagram-linux-aarch64
             exe: diagram
+            archive: linux-aarch64.tar.gz
 
           - label: macos-x86_64
             runner: macos-13
             target: x86_64-apple-darwin
-            asset: diagram-macos-x86_64
             exe: diagram
+            archive: macos-x86_64.tar.gz
 
           - label: macos-aarch64
             runner: macos-latest
             target: aarch64-apple-darwin
-            asset: diagram-macos-aarch64
             exe: diagram
+            archive: macos-aarch64.tar.gz
 
           - label: windows-x86_64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
-            asset: diagram-windows-x86_64.exe
             exe: diagram.exe
+            archive: windows-x86_64.zip
 
     steps:
       - uses: actions/checkout@v4
@@ -59,15 +59,25 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Rename binary
-        shell: bash
+      - name: Package (Unix)
+        if: matrix.label != 'windows-x86_64'
         run: |
-          cp target/${{ matrix.target }}/release/${{ matrix.exe }} ${{ matrix.asset }}
+          mkdir ${{ matrix.label }}
+          cp target/${{ matrix.target }}/release/${{ matrix.exe }} ${{ matrix.label }}/diagram
+          tar czf ${{ matrix.archive }} ${{ matrix.label }}
+
+      - name: Package (Windows)
+        if: matrix.label == 'windows-x86_64'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory ${{ matrix.label }}
+          Copy-Item target/${{ matrix.target }}/release/${{ matrix.exe }} ${{ matrix.label }}/diagram.exe
+          Compress-Archive -Path ${{ matrix.label }} -DestinationPath ${{ matrix.archive }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset }}
-          path: ${{ matrix.asset }}
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}
 
   release:
     name: Publish release

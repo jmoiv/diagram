@@ -16,38 +16,31 @@ drawing diagrams. You (or Claude) describe a diagram in a small, commented **YAM
 
 ## Installation
 
-### Option 1 — Download a prebuilt binary (recommended)
+### Install the executable
 
-Grab the latest release for your platform from the
+Download the archive for your platform from the
 [releases page](https://github.com/jmoiv/diagram/releases) and put `diagram` somewhere on
 your `PATH`:
 
 | Platform | Download |
 |---|---|
-| Linux x86\_64 | [diagram-linux-x86_64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-linux-x86_64) |
-| Linux arm64 | [diagram-linux-aarch64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-linux-aarch64) |
-| macOS Intel | [diagram-macos-x86_64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-macos-x86_64) |
-| macOS Apple Silicon | [diagram-macos-aarch64](https://github.com/jmoiv/diagram/releases/latest/download/diagram-macos-aarch64) |
-| Windows x86\_64 | [diagram-windows-x86_64.exe](https://github.com/jmoiv/diagram/releases/latest/download/diagram-windows-x86_64.exe) |
+| Linux x86\_64 | [linux-x86_64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/linux-x86_64.tar.gz) |
+| Linux arm64 | [linux-aarch64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/linux-aarch64.tar.gz) |
+| macOS Intel | [macos-x86_64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/macos-x86_64.tar.gz) |
+| macOS Apple Silicon | [macos-aarch64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/macos-aarch64.tar.gz) |
+| Windows x86\_64 | [windows-x86_64.zip](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.zip) |
 
 ```sh
-# Linux / macOS: mark executable and move to PATH
-chmod +x diagram-linux-x86_64
-sudo mv diagram-linux-x86_64 /usr/local/bin/diagram
+# Linux / macOS
+tar xzf linux-x86_64.tar.gz          # or macos-aarch64.tar.gz, etc.
+sudo mv linux-x86_64/diagram /usr/local/bin/
 diagram --help
 ```
 
-### Option 2 — Build from source
+On Windows, extract `windows-x86_64.zip` and move `windows-x86_64\diagram.exe` somewhere on
+your `PATH`.
 
-`diagram` is written in Rust and builds with Cargo — there are **no system libraries** to
-install. Install the Rust toolchain via [`rustup`](https://rustup.rs), then:
-
-```sh
-cargo build --release
-./target/release/diagram --help
-```
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed toolchain setup and the developer workflow.
+To build from source instead, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ### Install the Claude skill
 
