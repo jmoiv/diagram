@@ -85,13 +85,13 @@ The full checklist (with rationale) is in [CLAUDE.md](CLAUDE.md).
 
 ## Releasing
 
-Releases are built automatically by GitHub Actions when a version tag is pushed.
-Tag the commit you want to release on `main`:
-
 ```sh
-git tag v0.x.y
-git push origin v0.x.y
+./release.sh 0.x.y
 ```
 
-The workflow builds binaries for all five platforms and publishes them to
-<https://github.com/jmoiv/diagram/releases>. CI (tests + lint) also runs on every push.
+This updates the version in `Cargo.toml`, commits, tags, and pushes. GitHub Actions then
+builds release binaries for all five platforms and publishes them to
+<https://github.com/jmoiv/diagram/releases>.
+
+Local and CI-on-main builds show a `-dev` suffix (e.g. `0.1.0-dev`); `diagram update` skips
+those builds automatically.

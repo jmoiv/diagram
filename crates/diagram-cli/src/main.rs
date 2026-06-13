@@ -6,6 +6,9 @@
 //! - `fonts`   — list/query available system fonts.
 //! - `symbols` — list symbols or describe one symbol's properties.
 //! - `install` — install the companion Claude skill into a `.claude/skills` directory.
+//! - `update`  — download and install the latest release binary.
+
+mod update;
 
 /// The Claude skill files, embedded so `diagram install` is self-contained.
 const SKILL_MD: &str = include_str!("../../../skill/SKILL.md");
@@ -35,7 +38,7 @@ fn build_registry() -> Registry {
 #[derive(Parser)]
 #[command(
     name = "diagram",
-    version,
+    version = env!("DIAGRAM_VERSION"),
     about = "Render diagrams from a YAML language to SVG/PNG/PDF."
 )]
 struct Cli {
@@ -90,6 +93,8 @@ enum Command {
     /// `.claude` directory wins; otherwise a new `.claude` is created beside the nearest
     /// `.git`; otherwise it lands in the current directory.
     Install,
+    /// Check for a newer release and replace this binary if one is found.
+    Update,
 }
 
 #[derive(Subcommand)]
@@ -129,6 +134,7 @@ fn main() -> ExitCode {
         Command::Fonts { what } => cmd_fonts(what),
         Command::Symbols { what } => cmd_symbols(what),
         Command::Install => cmd_install(),
+        Command::Update => update::run(),
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

@@ -42,6 +42,16 @@ your `PATH`.
 
 To build from source instead, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
+### Keeping diagram up to date
+
+```sh
+diagram update
+```
+
+This checks the [latest release](https://github.com/jmoiv/diagram/releases) and, if a newer
+version is available, downloads and replaces the running binary automatically. If `diagram`
+is installed in a system directory, run with `sudo`.
+
 ### Install the Claude skill
 
 diagram includes a companion Claude skill (named `diagram`) so Claude can draw diagrams for
