@@ -6,7 +6,7 @@
 //! - `fonts`   — list/query available system fonts.
 //! - `symbols` — list symbols or describe one symbol's properties.
 //! - `install` — install the companion Claude skill into a `.claude/skills` directory.
-//! - `update`  — download and install the latest release binary.
+//! - `update`  — download and install the latest release binary, then refresh the skill.
 
 mod update;
 
@@ -93,7 +93,7 @@ enum Command {
     /// `.claude` directory wins; otherwise a new `.claude` is created beside the nearest
     /// `.git`; otherwise it lands in the current directory.
     Install,
-    /// Check for a newer release and replace this binary if one is found.
+    /// Check for a newer release, replace this binary if one is found, and refresh the skill.
     Update,
 }
 

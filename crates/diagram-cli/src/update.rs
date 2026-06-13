@@ -20,6 +20,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     if parse_version(latest) <= parse_version(CURRENT) {
         println!("Already up to date ({CURRENT}).");
+        refresh_skill();
         return Ok(());
     }
 
@@ -33,7 +34,45 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let binary = extract(&data)?;
     spinner.finish_and_clear();
 
-    install(&binary, latest)
+    install(&binary, latest)?;
+    refresh_skill();
+    Ok(())
+}
+
+/// Refresh the companion Claude skill by shelling out to the `install` subcommand
+/// of the binary on disk. We can't just call `cmd_install` in-process: after an
+/// update the running process still holds the *previous* binary's embedded skill
+/// files, so the new ones only exist in the freshly-written executable.
+///
+/// When invoked under `sudo`, skip the auto-install — the skill lives in the
+/// invoking user's `.claude`, and writing it as root would leave root-owned files
+/// they can't later overwrite. We tell them to run `diagram install` themselves.
+fn refresh_skill() {
+    if running_under_sudo(std::env::var_os("SUDO_USER")) {
+        eprintln!("Skipped the skill refresh while running as root.");
+        eprintln!("Run `diagram install` as your normal user to update it.");
+        return;
+    }
+
+    let exe = match std::env::current_exe() {
+        Ok(p) => p,
+        Err(_) => {
+            eprintln!("note: could not locate this binary to refresh the skill.");
+            eprintln!("Run `diagram install` to update it.");
+            return;
+        }
+    };
+
+    let refreshed = std::process::Command::new(&exe)
+        .arg("install")
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false);
+
+    if !refreshed {
+        eprintln!("note: the skill was not refreshed.");
+        eprintln!("Run `diagram install` to update it.");
+    }
 }
 
 fn fetch_latest_tag() -> Result<String, Box<dyn std::error::Error>> {
@@ -157,8 +196,8 @@ fn permission_denied(exe_path: &std::path::Path) -> Result<(), Box<dyn std::erro
         "diagram: error: could not replace {} (permission denied).",
         exe_path.display()
     );
-    eprintln!("Run as root:");
-    eprintln!("  sudo diagram update");
+    eprintln!("Re-run as root, then refresh the skill as yourself — in one go:");
+    eprintln!("  sudo diagram update && diagram install");
     std::process::exit(1);
 }
 
@@ -167,6 +206,13 @@ fn new_spinner(msg: &str) -> ProgressBar {
     pb.enable_steady_tick(Duration::from_millis(80));
     pb.set_message(msg.to_string());
     pb
+}
+
+/// Whether `diagram update` was invoked under `sudo`, in which case it must not
+/// auto-install the skill (that would leave root-owned files in the user's
+/// `.claude`). `sudo` exports `SUDO_USER` with the original login name.
+fn running_under_sudo(sudo_user: Option<std::ffi::OsString>) -> bool {
+    sudo_user.is_some_and(|u| !u.is_empty())
 }
 
 fn parse_version(v: &str) -> (u32, u32, u32) {
@@ -180,7 +226,8 @@ fn parse_version(v: &str) -> (u32, u32, u32) {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_version;
+    use super::{parse_version, running_under_sudo};
+    use std::ffi::OsString;
 
     #[test]
     fn version_ordering() {
@@ -188,5 +235,14 @@ mod tests {
         assert!(parse_version("1.0.0") > parse_version("0.9.9"));
         assert!(parse_version("0.2.0") > parse_version("0.1.99"));
         assert_eq!(parse_version("0.1.0"), parse_version("v0.1.0"));
+    }
+
+    #[test]
+    fn sudo_detection() {
+        // Under sudo, the skill refresh is deferred to the user.
+        assert!(running_under_sudo(Some(OsString::from("alice"))));
+        // No SUDO_USER, or an empty one, means we refresh in-process.
+        assert!(!running_under_sudo(None));
+        assert!(!running_under_sudo(Some(OsString::new())));
     }
 }

@@ -46,8 +46,20 @@ diagram update
 ```
 
 This checks the [latest release](https://github.com/jmoiv/diagram/releases) and, if a newer
-version is available, downloads and replaces the running binary automatically. If `diagram`
-is installed in a system directory, run with `sudo`.
+version is available, downloads and replaces the running binary automatically. It then
+refreshes the companion Claude skill (the equivalent of `diagram install`) so the two never
+drift out of sync.
+
+If `diagram` lives in a system directory, the self-replace needs root. Run the update as root
+and the skill refresh as yourself, in one pipeline:
+
+```sh
+sudo diagram update && diagram install
+```
+
+Under `sudo`, `diagram update` deliberately skips the skill refresh — installing it as root
+would leave files in your `.claude` that you couldn't later overwrite — so the trailing
+`diagram install` (run as you) is what updates it.
 
 ### Install the Claude skill
 
