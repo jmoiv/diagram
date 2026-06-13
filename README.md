@@ -18,27 +18,24 @@ drawing diagrams. You (or Claude) describe a diagram in a small, commented **YAM
 
 ### Install the executable
 
-Download the archive for your platform from the
-[releases page](https://github.com/jmoiv/diagram/releases) and put `diagram` somewhere on
-your `PATH`:
-
-| Platform | Download |
-|---|---|
-| Linux x86\_64 | [linux-x86_64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/linux-x86_64.tar.gz) |
-| Linux arm64 | [linux-aarch64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/linux-aarch64.tar.gz) |
-| macOS Intel | [macos-x86_64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/macos-x86_64.tar.gz) |
-| macOS Apple Silicon | [macos-aarch64.tar.gz](https://github.com/jmoiv/diagram/releases/latest/download/macos-aarch64.tar.gz) |
-| Windows x86\_64 | [windows-x86_64.zip](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.zip) |
+On Linux or macOS, paste this into a terminal — `uname` picks the right file automatically:
 
 ```sh
-# Linux / macOS
-tar xzf linux-x86_64.tar.gz          # or macos-aarch64.tar.gz, etc.
-sudo mv linux-x86_64/diagram /usr/local/bin/
-diagram --help
+curl -fsSL "https://github.com/jmoiv/diagram/releases/latest/download/$(uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/macos/')-$(uname -m | sed 's/arm64/aarch64/').gz" \
+  | gunzip > /usr/local/bin/diagram && chmod +x /usr/local/bin/diagram
 ```
 
-On Windows, extract `windows-x86_64.zip` and move `windows-x86_64\diagram.exe` somewhere on
-your `PATH`.
+> If `/usr/local/bin` is owned by root, prefix with `sudo sh -c '...'`.
+
+On Windows, use the same command in **Git Bash** or **WSL** — both include `curl` and
+`gunzip`. Or download [windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.gz)
+and decompress it manually.
+
+Direct links: [linux-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/linux-x86_64.gz) ·
+[linux-aarch64.gz](https://github.com/jmoiv/diagram/releases/latest/download/linux-aarch64.gz) ·
+[macos-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/macos-x86_64.gz) ·
+[macos-aarch64.gz](https://github.com/jmoiv/diagram/releases/latest/download/macos-aarch64.gz) ·
+[windows-x86_64.gz](https://github.com/jmoiv/diagram/releases/latest/download/windows-x86_64.gz)
 
 To build from source instead, see [DEVELOPMENT.md](DEVELOPMENT.md).
 

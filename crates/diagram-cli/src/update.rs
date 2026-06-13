@@ -30,7 +30,7 @@ pub fn run() -> Result<(), Box<dyn std::error::Error>> {
     let data = download(archive, &url)?;
 
     let spinner = new_spinner("Installing…");
-    let binary = extract(archive, &data)?;
+    let binary = extract(&data)?;
     spinner.finish_and_clear();
 
     install(&binary, latest)
@@ -55,11 +55,11 @@ fn fetch_latest_tag() -> Result<String, Box<dyn std::error::Error>> {
 
 fn platform_archive() -> Result<&'static str, Box<dyn std::error::Error>> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("linux", "x86_64") => Ok("linux-x86_64.tar.gz"),
-        ("linux", "aarch64") => Ok("linux-aarch64.tar.gz"),
-        ("macos", "x86_64") => Ok("macos-x86_64.tar.gz"),
-        ("macos", "aarch64") => Ok("macos-aarch64.tar.gz"),
-        ("windows", "x86_64") => Ok("windows-x86_64.zip"),
+        ("linux", "x86_64") => Ok("linux-x86_64.gz"),
+        ("linux", "aarch64") => Ok("linux-aarch64.gz"),
+        ("macos", "x86_64") => Ok("macos-x86_64.gz"),
+        ("macos", "aarch64") => Ok("macos-aarch64.gz"),
+        ("windows", "x86_64") => Ok("windows-x86_64.gz"),
         (os, arch) => Err(format!("unsupported platform: {os}/{arch}").into()),
     }
 }
@@ -104,47 +104,12 @@ fn download(archive: &str, url: &str) -> Result<Vec<u8>, Box<dyn std::error::Err
     Ok(data)
 }
 
-fn extract(archive: &str, data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    if archive.ends_with(".tar.gz") {
-        extract_tar_gz(data)
-    } else {
-        extract_zip(data)
-    }
-}
-
-fn extract_tar_gz(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+fn extract(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use flate2::read::GzDecoder;
-    use std::ffi::OsStr;
-    use tar::Archive;
-
-    let gz = GzDecoder::new(data);
-    let mut ar = Archive::new(gz);
-    for entry in ar.entries()? {
-        let mut entry = entry?;
-        if entry.path()?.file_name() == Some(OsStr::new("diagram")) {
-            let mut bytes = Vec::new();
-            entry.read_to_end(&mut bytes)?;
-            return Ok(bytes);
-        }
-    }
-    Err("could not find 'diagram' binary in archive".into())
-}
-
-fn extract_zip(data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    use zip::ZipArchive;
-
-    let cursor = std::io::Cursor::new(data);
-    let mut ar = ZipArchive::new(cursor)?;
-    for i in 0..ar.len() {
-        let mut file = ar.by_index(i)?;
-        let name = file.name().to_string();
-        if name.ends_with("/diagram.exe") || name == "diagram.exe" {
-            let mut bytes = Vec::new();
-            file.read_to_end(&mut bytes)?;
-            return Ok(bytes);
-        }
-    }
-    Err("could not find 'diagram.exe' in archive".into())
+    let mut gz = GzDecoder::new(data);
+    let mut bytes = Vec::new();
+    gz.read_to_end(&mut bytes)?;
+    Ok(bytes)
 }
 
 fn install(binary: &[u8], version: &str) -> Result<(), Box<dyn std::error::Error>> {
