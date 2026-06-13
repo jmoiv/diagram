@@ -2,7 +2,8 @@
 //!
 //! Provides the `shapes` plugin: `rectangle`, `circle`, `oval` (ellipse), `explosion`
 //! (a starburst callout), and `arrow` (a big block arrow). Every shape accepts a `fill`
-//! (background color) and a `text_color` property in addition to its `label`. Filled
+//! (background color), a `stroke_color` (border color), and a `text_color` property in
+//! addition to its `label`. Filled
 //! shapes (`rectangle`, `circle`, `oval`, `explosion`) expose compass ports `n`, `e`, `s`,
 //! `w`; `arrow` exposes its tail port `a` and tip port `b`.
 
@@ -69,11 +70,19 @@ fn text_color(props: &Props, style: &Style) -> Color {
     }
 }
 
-/// A filled-shape style: the resolved `fill` background, the inherited stroke.
+/// Resolve the border (stroke) color: the `stroke_color` property if set, else the inherited stroke.
+fn stroke_color(props: &Props, style: &Style) -> Color {
+    match props.get("stroke_color") {
+        Some(PropValue::Text(s)) if !s.is_empty() => Color::parse(s).unwrap_or(style.stroke),
+        _ => style.stroke,
+    }
+}
+
+/// A filled-shape style: the resolved `fill` background and `stroke_color` border.
 fn shape_style(props: &Props, style: &Style) -> ShapeStyle {
     ShapeStyle::new(
         fill_color(props, style),
-        style.stroke,
+        stroke_color(props, style),
         style.stroke_width.max(1.0),
     )
 }
@@ -120,6 +129,12 @@ fn color_props(extra: &str) -> Vec<PropertySpec> {
             PropKind::Text,
             PropValue::text("white"),
             "Background color (name or #hex). Defaults to white.",
+        ),
+        PropertySpec::optional(
+            "stroke_color",
+            PropKind::Text,
+            PropValue::text(""),
+            "Border color (name or #hex). Defaults to the inherited stroke color.",
         ),
         PropertySpec::optional(
             "text_color",
@@ -581,6 +596,36 @@ mod tests {
             .iter()
             .any(|x| matches!(x, Primitive::Text { text, style, .. }
                 if text == "Box" && style.color == Color::WHITE)));
+    }
+
+    #[test]
+    fn stroke_color_property_overrides_inherited_stroke() {
+        let r = Rectangle;
+        let m = BasicMeasurer::default();
+        let bounds = Rect::new(0.0, 0.0, 80.0, 44.0);
+        let red = Color::parse("red").unwrap();
+
+        // Explicit stroke_color overrides the inherited style stroke.
+        let p1 = props(&[("stroke_color", PropValue::text("red"))]);
+        let mut painter = Painter::new();
+        let style = Style {
+            stroke: Color::BLACK,
+            ..Style::default()
+        };
+        r.draw(&mut painter, bounds, &p1, &style, &m);
+        assert!(painter
+            .primitives()
+            .iter()
+            .any(|x| matches!(x, Primitive::Rect { style, .. } if style.stroke == red)));
+
+        // Without stroke_color, the inherited stroke is used.
+        let mut painter = Painter::new();
+        r.draw(&mut painter, bounds, &Props::new(), &style, &m);
+        let black = Color::BLACK;
+        assert!(painter
+            .primitives()
+            .iter()
+            .any(|x| matches!(x, Primitive::Rect { style, .. } if style.stroke == black)));
     }
 
     #[test]

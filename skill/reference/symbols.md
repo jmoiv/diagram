@@ -62,7 +62,8 @@ you want a standalone arrow element.
 ### `shapes` — generic shapes
 
 Plain building blocks with colored backgrounds. Every shape accepts `label` (text drawn
-inside), `fill` (background color — a name like `blue` or a `#hex`, default white), and
+inside), `fill` (background color — a name like `blue` or a `#hex`, default white),
+`stroke_color` (border color — name or `#hex`, defaults to the inherited stroke color), and
 `text_color` (label color, defaults to the inherited text color). The filled shapes expose
 compass ports `n`, `e`, `s`, `w`; `arrow` exposes its tail `a` and tip `b`.
 
