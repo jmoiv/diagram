@@ -670,56 +670,123 @@ fn resolve_port(
     }
 }
 
-/// Pixels between adjacent parallel orthogonal connections at their shared shift column.
+/// Pixels between adjacent parallel orthogonal connections at their shared shift segment.
 const ORTHO_SEP: f64 = 8.0;
 
-/// Pre-compute per-connection x-offsets so parallel orthogonal connections (those whose
-/// natural `midx` lands in the same pixel column) are fanned apart symmetrically.
+/// True when a port faces up or down — used to pick V-H-V vs H-V-H routing.
+fn is_vertical_port(dir: Option<Dir>) -> bool {
+    matches!(dir, Some(Dir::Up) | Some(Dir::Down))
+}
+
+/// Resolved geometry for one orthogonal connection, pre-computed for grouping.
+struct OrthoInfo {
+    p1: Point,
+    p2: Point,
+    /// `true` when both ports are vertical (Up/Down) → use V-H-V routing.
+    vertical: bool,
+}
+
+/// Pre-compute per-connection offsets so parallel orthogonal connections
+/// are fanned apart rather than overlapping.
+///
+/// H-V-H connections (both ports horizontal) are grouped by their natural `midx` and
+/// spread in x.  V-H-V connections (both ports vertical) are grouped by their natural
+/// `midy` and spread in y.
+///
+/// Within each group the offset direction is chosen to avoid the crossing that would
+/// otherwise occur: for H-V-H connections going *downward* the fan is reversed
+/// (topmost source gets the rightmost/largest shift), and for V-H-V connections the
+/// fan is reversed when dx and dy have the same sign.
+///
 /// Returns a `Vec` aligned with `connections`; non-orthogonal entries are `0.0`.
 fn ortho_offsets(connections: &[Connect], nodes: &HashMap<String, ResolvedNode>) -> Vec<f64> {
-    // Resolve the natural midx for every orthogonal connection.
-    let midxs: Vec<Option<f64>> = connections
+    // Resolve ports once per connection.
+    let data: Vec<Option<OrthoInfo>> = connections
         .iter()
         .map(|c| {
             if c.routing != Routing::Orthogonal {
                 return None;
             }
-            let p1 = resolve_port(&c.from, nodes).ok()?.0;
-            let p2 = resolve_port(&c.to, nodes).ok()?.0;
-            Some((p1.x + p2.x) / 2.0)
+            let (p1, d1) = resolve_port(&c.from, nodes).ok()?;
+            let (p2, d2) = resolve_port(&c.to, nodes).ok()?;
+            let vertical = is_vertical_port(d1) && is_vertical_port(d2);
+            Some(OrthoInfo { p1, p2, vertical })
         })
         .collect();
 
-    // Group indices by their midx rounded to the nearest pixel.
-    let mut groups: HashMap<i64, Vec<usize>> = HashMap::new();
-    for (i, mx) in midxs.iter().enumerate() {
-        if let Some(mx) = mx {
-            groups.entry(mx.round() as i64).or_default().push(i);
+    // Bucket connections into H groups (by midx) and V groups (by midy).
+    let mut h_groups: HashMap<i64, Vec<usize>> = HashMap::new();
+    let mut v_groups: HashMap<i64, Vec<usize>> = HashMap::new();
+    for (i, d) in data.iter().enumerate() {
+        if let Some(d) = d {
+            if d.vertical {
+                let midy = (d.p1.y + d.p2.y) / 2.0;
+                v_groups.entry(midy.round() as i64).or_default().push(i);
+            } else {
+                let midx = (d.p1.x + d.p2.x) / 2.0;
+                h_groups.entry(midx.round() as i64).or_default().push(i);
+            }
         }
     }
 
     let mut offsets = vec![0.0f64; connections.len()];
-    for indices in groups.values() {
+
+    // H groups: sort by source y, spread midx; reverse fan when going downward.
+    for indices in h_groups.values() {
         if indices.len() < 2 {
-            continue; // solo connection — no spread needed
+            continue;
         }
-        // Sort by source y so the offset order follows visual top-to-bottom order.
         let mut sorted = indices.clone();
         sorted.sort_by(|&a, &b| {
-            let ya = resolve_port(&connections[a].from, nodes)
-                .map(|(p, _)| p.y)
-                .unwrap_or(0.0);
-            let yb = resolve_port(&connections[b].from, nodes)
-                .map(|(p, _)| p.y)
-                .unwrap_or(0.0);
+            let ya = data[a].as_ref().map(|d| d.p1.y).unwrap_or(0.0);
+            let yb = data[b].as_ref().map(|d| d.p1.y).unwrap_or(0.0);
             ya.partial_cmp(&yb).unwrap_or(std::cmp::Ordering::Equal)
         });
         let n = sorted.len() as f64;
+        let mean_dy: f64 = sorted
+            .iter()
+            .filter_map(|&i| data[i].as_ref())
+            .map(|d| d.p2.y - d.p1.y)
+            .sum::<f64>()
+            / n;
         for (rank, &idx) in sorted.iter().enumerate() {
-            // Center the fan on the natural midx: rank 0 gets the most negative offset.
-            offsets[idx] = (rank as f64 - (n - 1.0) / 2.0) * ORTHO_SEP;
+            let base = (rank as f64 - (n - 1.0) / 2.0) * ORTHO_SEP;
+            // Going down: top source must get the rightmost shift to avoid crossings.
+            offsets[idx] = if mean_dy > 0.0 { -base } else { base };
         }
     }
+
+    // V groups: sort by source x, spread midy; reverse fan when dx and dy have the same sign.
+    for indices in v_groups.values() {
+        if indices.len() < 2 {
+            continue;
+        }
+        let mut sorted = indices.clone();
+        sorted.sort_by(|&a, &b| {
+            let xa = data[a].as_ref().map(|d| d.p1.x).unwrap_or(0.0);
+            let xb = data[b].as_ref().map(|d| d.p1.x).unwrap_or(0.0);
+            xa.partial_cmp(&xb).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        let n = sorted.len() as f64;
+        let mean_dy: f64 = sorted
+            .iter()
+            .filter_map(|&i| data[i].as_ref())
+            .map(|d| d.p2.y - d.p1.y)
+            .sum::<f64>()
+            / n;
+        let mean_dx: f64 = sorted
+            .iter()
+            .filter_map(|&i| data[i].as_ref())
+            .map(|d| d.p2.x - d.p1.x)
+            .sum::<f64>()
+            / n;
+        for (rank, &idx) in sorted.iter().enumerate() {
+            let base = (rank as f64 - (n - 1.0) / 2.0) * ORTHO_SEP;
+            // Same-sign dx/dy means leftmost source gets the lowest midy to avoid crossings.
+            offsets[idx] = if mean_dy * mean_dx > 0.0 { -base } else { base };
+        }
+    }
+
     offsets
 }
 
@@ -732,14 +799,21 @@ fn draw_connection(
     offset: f64,
 ) -> Result<()> {
     let style = base.inherit(&c.style);
-    let (p1, _d1) = resolve_port(&c.from, nodes)?;
-    let (p2, _d2) = resolve_port(&c.to, nodes)?;
+    let (p1, d1) = resolve_port(&c.from, nodes)?;
+    let (p2, d2) = resolve_port(&c.to, nodes)?;
 
     let pts: Vec<Point> = match c.routing {
         Routing::Straight => vec![p1, p2],
         Routing::Orthogonal => {
-            let midx = (p1.x + p2.x) / 2.0 + offset;
-            vec![p1, Point::new(midx, p1.y), Point::new(midx, p2.y), p2]
+            if is_vertical_port(d1) && is_vertical_port(d2) {
+                // V-H-V: both ports face up/down — go vertical first to avoid overlapping
+                // first horizontal segments when multiple connections leave the same face.
+                let midy = (p1.y + p2.y) / 2.0 + offset;
+                vec![p1, Point::new(p1.x, midy), Point::new(p2.x, midy), p2]
+            } else {
+                let midx = (p1.x + p2.x) / 2.0 + offset;
+                vec![p1, Point::new(midx, p1.y), Point::new(midx, p2.y), p2]
+            }
         }
     };
 
